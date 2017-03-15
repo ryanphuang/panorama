@@ -1,10 +1,11 @@
 package store
 
 import "testing"
+import "time"
 
-func TestNewHVector(t *testing.T) {
-	var v *HVector
-	v = NewHVector("cpu", "disk", "network", "memory")
+func TestNewHObservation(t *testing.T) {
+	var v *HObservation
+	v = NewHObservation(time.Now(), "cpu", "disk", "network", "memory")
 	if v == nil {
 		t.Error("Fail to make health vector")
 	}

@@ -22,11 +22,9 @@ type HMetric struct {
 }
 
 type HObservation struct {
-	ts     Time      // time when the observation was made
-	vector []HMetric // actual scores for each metric
+	ts     time.Time  // time when the observation was made
+	vector []*HMetric // actual scores for each metric
 }
-
-type HObservations *list.List // list of observations
 
 type HReport struct {
 	observer    EntityId     // the entity that made the report
@@ -35,9 +33,9 @@ type HReport struct {
 }
 
 type HView struct {
-	observer     EntityId      // who made the observation
-	subject      EntityId      // the entity whose health is being reported by the observer
-	observations HObservations // all the observations for this subject reported by the observer
+	observer     EntityId   // who made the observation
+	subject      EntityId   // the entity whose health is being reported by the observer
+	observations *list.List // all the observations for this subject reported by the observer
 }
 
 type HTable struct {
@@ -45,16 +43,22 @@ type HTable struct {
 	views   map[EntityId]*HView // various observers' reports about the subject
 }
 
-func NewHVector(names ...string) *HVector {
-	var schema HSchema
-	schema.names = make([]string, len(names))
-	scores := make([]HScore, len(names))
-	for i, name := range names {
-		schema.names[i] = name
-		scores[i] = HScore{status: UNKNOWN, score: 0.0}
+func (self *HObservation) SetMetric(name string, status HStatus, score float32) bool {
+	for _, metric := range self.vector {
+		if metric.name == name {
+			metric.status = status
+			metric.score = score
+			return true
+		}
 	}
-	vector := new(HVector)
-	vector.schema = schema
-	vector.scores = scores
-	return vector
+	self.vector = append(self.vector, &HMetric{name: name, status: status, score: score})
+	return true
+}
+
+func NewHObservation(time time.Time, names ...string) *HObservation {
+	vector := make([]*HMetric, len(names))
+	for i, name := range names {
+		vector[i] = &HMetric{name: name, status: UNKNOWN, score: 0.0}
+	}
+	return &HObservation{ts: time, vector: vector}
 }
