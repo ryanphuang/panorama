@@ -1,9 +1,12 @@
 package store
 
-import "fmt"
-import "testing"
-import "time"
-import "sync"
+import (
+	. "deephealth/health"
+	"fmt"
+	"sync"
+	"testing"
+	"time"
+)
 
 func TestAddReport(t *testing.T) {
 	store := NewHViewStore("TS_1", "TS_2", "TS_3", "TS_4")
@@ -17,25 +20,26 @@ func TestAddReport(t *testing.T) {
 		observation.SetMetric("memory", MAYBE_UNHEALTHY, 30)
 		observer := EntityId(fmt.Sprintf("FE_%d", i))
 		subject := EntityId(fmt.Sprintf("TS_%d", i%3))
-		report := &HReport{observer: observer, subject: subject, observation: *observation}
+		report := &HReport{Observer: observer, Subject: subject, Observation: *observation}
 		wg.Add(1)
 		go func() {
-			store.AddReport(report)
+			var reply int
+			store.AddReport(report, &reply)
 			wg.Done()
 		}()
 	}
 	wg.Wait()
 
-	if len(store.tables) == 0 {
+	if len(store.Tables) == 0 {
 		t.Error("Health table should not be empty")
 	}
-	for subject, table := range store.tables {
+	for subject, table := range store.Tables {
 		t.Logf("=============%s=============", subject)
-		for observer, view := range table.views {
-			t.Logf("%d observations for %s->%s", view.observations.Len(), observer, subject)
-			for e := view.observations.Front(); e != nil; e = e.Next() {
+		for observer, view := range table.Views {
+			t.Logf("%d observations for %s->%s", view.Observations.Len(), observer, subject)
+			for e := view.Observations.Front(); e != nil; e = e.Next() {
 				val := e.Value.(*HObservation)
-				t.Logf("|%s| %s %s...%s", observer, val.ts.Format(time.UnixDate), *val.vector[0], *val.vector[len(val.vector)-1])
+				t.Logf("|%s| %s %s...%s", observer, val.Ts.Format(time.UnixDate), *val.Vector[0], *val.Vector[len(val.Vector)-1])
 			}
 		}
 	}

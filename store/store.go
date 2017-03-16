@@ -1,84 +1,103 @@
 package store
 
-import "sync"
-import "container/list"
-import "log"
+import (
+	"container/list"
+	"sync"
+
+	. "deephealth/health"
+	"deephealth/util"
+)
 
 const (
 	MaxReportPerView = 5 // maximum number of reports to store for a given view
+	StoreTag         = "store"
 )
 
 type HRawViewStore struct {
-	tables    map[EntityId]*HTable
-	mu        *sync.Mutex
-	locks     map[EntityId]*sync.Mutex
-	watchlist map[EntityId]bool
+	Tables    map[EntityId]*HTable
+	Locks     map[EntityId]*sync.Mutex
+	Watchlist map[EntityId]bool
+
+	mu *sync.Mutex
 }
 
 func NewHViewStore(subjects ...EntityId) *HRawViewStore {
 	store := &HRawViewStore{
-		tables:    make(map[EntityId]*HTable),
-		mu:        &sync.Mutex{},
-		locks:     make(map[EntityId]*sync.Mutex),
-		watchlist: make(map[EntityId]bool),
+		Tables:    make(map[EntityId]*HTable),
+		Locks:     make(map[EntityId]*sync.Mutex),
+		Watchlist: make(map[EntityId]bool),
+
+		mu: &sync.Mutex{},
 	}
 	var table *HTable
 	for _, subject := range subjects {
-		store.watchlist[subject] = true
-		store.locks[subject] = new(sync.Mutex)
+		store.Watchlist[subject] = true
+		store.Locks[subject] = new(sync.Mutex)
 		table = new(HTable)
-		table.subject = subject
-		table.views = make(map[EntityId]*HView)
-		store.tables[subject] = table
+		table.Subject = subject
+		table.Views = make(map[EntityId]*HView)
+		store.Tables[subject] = table
 	}
 	return store
 }
 
-func (self *HRawViewStore) AddWatchSubject(subject EntityId) bool {
-	_, ok := self.watchlist[subject]
-	self.watchlist[subject] = true
-	return !ok
+var _ ViewStorage = new(HRawViewStore)
+
+func (self *HRawViewStore) ObserveSubject(subject EntityId, reply *bool) error {
+	_, ok := self.Watchlist[subject]
+	self.Watchlist[subject] = true
+	*reply = !ok
+	return nil
 }
 
-func (self *HRawViewStore) AddReport(report *HReport) (int, error) {
-	_, ok := self.watchlist[report.subject]
+func (self *HRawViewStore) StopObservingSubject(subject EntityId, reply *bool) error {
+	_, ok := self.Watchlist[subject]
+	delete(self.Watchlist, subject)
+	*reply = ok
+	return nil
+}
+
+func (self *HRawViewStore) AddReport(report *HReport, reply *int) error {
+	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
-		log.Printf("ignore %s...\n", report.subject)
-		return 1, nil
+		util.LogI(StoreTag, "%s not in watch list, ignore report...", report.Subject)
+		*reply = 1
+		return nil
 	}
-	log.Printf("add %s...\n", report.subject)
+	util.LogD(StoreTag, "add report for %s...", report.Subject)
 	self.mu.Lock()
-	l, ok := self.locks[report.subject]
+	l, ok := self.Locks[report.Subject]
 	if !ok {
 		l = new(sync.Mutex)
-		self.locks[report.subject] = l
+		self.Locks[report.Subject] = l
 	}
 	self.mu.Unlock()
 	l.Lock()
-	table, ok := self.tables[report.subject]
+	table, ok := self.Tables[report.Subject]
 	if !ok {
 		table = &HTable{
-			subject: report.subject,
-			views:   make(map[EntityId]*HView),
+			Subject: report.Subject,
+			Views:   make(map[EntityId]*HView),
 		}
-		self.tables[report.subject] = table
+		self.Tables[report.Subject] = table
 	}
-	view, ok := table.views[report.observer]
+	view, ok := table.Views[report.Observer]
 	if !ok {
 		view = &HView{
-			observer:     report.observer,
-			subject:      report.subject,
-			observations: list.New(),
+			Observer:     report.Observer,
+			Subject:      report.Subject,
+			Observations: list.New(),
 		}
-		table.views[report.observer] = view
-		log.Printf("create view for %s->%s...\n", report.observer, report.subject)
+		table.Views[report.Observer] = view
+		util.LogD(StoreTag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
-	view.observations.PushBack(&report.observation)
-	if view.observations.Len() > MaxReportPerView {
-		log.Printf("truncating list\n")
-		view.observations.Remove(view.observations.Front())
+	view.Observations.PushBack(&report.Observation)
+	if view.Observations.Len() > MaxReportPerView {
+		util.LogD(StoreTag, "truncating list")
+		view.Observations.Remove(view.Observations.Front())
 	}
 	l.Unlock()
-	return 0, nil
+	*reply = 0
+	return nil
 }
