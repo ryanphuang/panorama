@@ -45,8 +45,8 @@ type View struct {
 	Observations *list.List // all the observations for this subject reported by the observer
 }
 
-// A stereo is a collection of views from different observers about the same subject
-type Stereo struct {
+// A panorama is a collection of views from different observers about the same subject
+type Panorama struct {
 	Subject EntityId           // the entity whose health information is stored
 	Views   map[EntityId]*View // various observers' reports about the subject
 }

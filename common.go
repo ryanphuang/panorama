@@ -11,3 +11,7 @@ type HealthStorage interface {
 	// Add a report to the view storage
 	AddReport(report *Report, reply *int) error
 }
+
+type HealthGossip interface {
+	GossipReport(report *Report, reply *int) error
+}

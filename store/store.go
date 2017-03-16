@@ -13,7 +13,7 @@ const (
 )
 
 type RawHealthStorage struct {
-	Tenants   map[dh.EntityId]*dh.Stereo
+	Tenants   map[dh.EntityId]*dh.Panorama
 	Locks     map[dh.EntityId]*sync.Mutex
 	Watchlist map[dh.EntityId]bool
 
@@ -22,17 +22,17 @@ type RawHealthStorage struct {
 
 func NewRawHealthStorage(subjects ...dh.EntityId) *RawHealthStorage {
 	store := &RawHealthStorage{
-		Tenants:   make(map[dh.EntityId]*dh.Stereo),
+		Tenants:   make(map[dh.EntityId]*dh.Panorama),
 		Locks:     make(map[dh.EntityId]*sync.Mutex),
 		Watchlist: make(map[dh.EntityId]bool),
 
 		mu: &sync.Mutex{},
 	}
-	var stereo *dh.Stereo
+	var stereo *dh.Panorama
 	for _, subject := range subjects {
 		store.Watchlist[subject] = true
 		store.Locks[subject] = new(sync.Mutex)
-		stereo = new(dh.Stereo)
+		stereo = new(dh.Panorama)
 		stereo.Subject = subject
 		stereo.Views = make(map[dh.EntityId]*dh.View)
 		store.Tenants[subject] = stereo
@@ -75,7 +75,7 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 	l.Lock()
 	stereo, ok := self.Tenants[report.Subject]
 	if !ok {
-		stereo = &dh.Stereo{
+		stereo = &dh.Panorama{
 			Subject: report.Subject,
 			Views:   make(map[dh.EntityId]*dh.View),
 		}
