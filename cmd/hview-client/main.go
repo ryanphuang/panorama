@@ -34,5 +34,8 @@ func main() {
 	}
 	var reply int
 	fmt.Printf("Calling add report to %s\n", addr)
-	c.Call("HealthStorage.AddReport", report, &reply)
+	// var msg string = "hello world"
+	c.Call("RawHealthStorage.AddReport", report, &reply)
+	fmt.Printf("Got reply %d\n", reply)
+	fmt.Println(report.Subject)
 }

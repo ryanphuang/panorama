@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	dh "deephealth"
-	"deephealth/store"
+	"deephealth/service"
+	//	"deephealth/store"
 )
 
 var (
@@ -27,7 +27,7 @@ func main() {
 		faddr = fmt.Sprintf("%s:%d", faddr, port)
 	}
 	fmt.Printf("Starting health service at %s\n", faddr)
-	storage := store.NewRawHealthStorage("XFE_1", "XFE_2", "XFE_3", "XFE_4")
-	hs := dh.NewHealthService(faddr, "HS_1", storage)
+	// storage := store.NewRawHealthStorage("XFE_1", "XFE_2", "XFE_3", "XFE_4")
+	hs := service.NewHealthService(faddr, "HS_1", nil)
 	hs.Start()
 }
