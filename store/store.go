@@ -2,6 +2,7 @@ package store
 
 import (
 	"container/list"
+	"fmt"
 	"sync"
 
 	dh "deephealth"
@@ -57,6 +58,7 @@ func (self *RawHealthStorage) StopObservingSubject(subject dh.EntityId, reply *b
 }
 
 func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
+	fmt.Printf("Receive an add report request for %s from %s!\n", report.Subject, report.Observer)
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
