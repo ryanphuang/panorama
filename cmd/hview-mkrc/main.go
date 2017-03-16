@@ -1,12 +1,12 @@
 package main
 
 import (
-	"deephealth/config"
-	"deephealth/util"
 	"flag"
 	"fmt"
 	"math/rand"
 	"time"
+
+	dh "deephealth"
 )
 
 var (
@@ -31,10 +31,10 @@ func main() {
 		inc_p = false
 	} else {
 		if *portstart <= 0 || *portend <= 0 {
-			util.LogF("%s", "Port range must be positive")
+			dh.LogF("%s", "Port range must be positive")
 		}
 		if *portstart > *portend {
-			util.LogF("%s", "Port start must not exceed port end")
+			dh.LogF("%s", "Port start must not exceed port end")
 		}
 		p = *portstart + int(r.Intn(*portend-*portstart))
 		inc_p = true
@@ -44,18 +44,19 @@ func main() {
 		inc_s = false
 	} else {
 		if *sidstart < 0 {
-			util.LogF("%s", "Server id must be positive")
+			dh.LogF("%s", "Server id must be positive")
 		}
 		s = *sidstart
 		inc_s = true
 	}
-	rc := new(config.RC)
-	rc.Servers = make([]string, *nserver)
+	rc := new(dh.RC)
+	rc.HealthServers = make(map[dh.EntityId]string)
 	for i := 0; i < *nserver; i++ {
+		eid := dh.EntityId(fmt.Sprintf("HS_%d", i+1))
 		if *localhost {
-			rc.Servers[i] = fmt.Sprintf("localhost:%d", p)
+			rc.HealthServers[eid] = fmt.Sprintf("localhost:%d", p)
 		} else {
-			rc.Servers[i] = fmt.Sprintf(*serverp+":%d", s, p)
+			rc.HealthServers[eid] = fmt.Sprintf(*serverp+":%d", s, p)
 		}
 		if inc_p {
 			p++

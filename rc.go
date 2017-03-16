@@ -7,7 +7,7 @@ import (
 )
 
 type RC struct {
-	Servers []string
+	HealthServers map[EntityId]string
 }
 
 func LoadRC(path string) (*RC, error) {

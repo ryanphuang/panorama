@@ -1,5 +1,6 @@
 package deephealth
 
-type HViewServerConfig struct {
+type HealthServerConfig struct {
 	Addr string
+	EId  EntityId
 }

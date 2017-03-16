@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	dh "deephealth"
-	"deephealth/util"
 )
 
 const (
@@ -61,11 +60,11 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
-		util.LogI(StoreTag, "%s not in watch list, ignore report...", report.Subject)
+		dh.LogI(StoreTag, "%s not in watch list, ignore report...", report.Subject)
 		*reply = 1
 		return nil
 	}
-	util.LogD(StoreTag, "add report for %s...", report.Subject)
+	dh.LogD(StoreTag, "add report for %s...", report.Subject)
 	self.mu.Lock()
 	l, ok := self.Locks[report.Subject]
 	if !ok {
@@ -90,11 +89,11 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 			Observations: list.New(),
 		}
 		stereo.Views[report.Observer] = view
-		util.LogD(StoreTag, "create view for %s->%s...", report.Observer, report.Subject)
+		dh.LogD(StoreTag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations.PushBack(&report.Observation)
 	if view.Observations.Len() > MaxReportPerView {
-		util.LogD(StoreTag, "truncating list")
+		dh.LogD(StoreTag, "truncating list")
 		view.Observations.Remove(view.Observations.Front())
 	}
 	l.Unlock()
