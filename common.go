@@ -1,10 +1,6 @@
-package store
+package deephealth
 
-import (
-	. "deephealth/health"
-)
-
-type ViewStorage interface {
+type HealthStorage interface {
 	// Add a subject to the observing subject list
 	ObserveSubject(subject EntityId, reply *bool) error
 
@@ -13,5 +9,5 @@ type ViewStorage interface {
 	StopObservingSubject(subject EntityId, reply *bool) error
 
 	// Add a report to the view storage
-	AddReport(report *HReport, reply *int) error
+	AddReport(report *Report, reply *int) error
 }

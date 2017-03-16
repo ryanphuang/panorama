@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"sync"
 
-	. "deephealth/health"
+	dh "deephealth"
 	"deephealth/util"
 )
 
@@ -13,51 +13,51 @@ const (
 	StoreTag         = "store"
 )
 
-type HRawViewStore struct {
-	Tables    map[EntityId]*HTable
-	Locks     map[EntityId]*sync.Mutex
-	Watchlist map[EntityId]bool
+type RawHealthStorage struct {
+	Tenants   map[dh.EntityId]*dh.Stereo
+	Locks     map[dh.EntityId]*sync.Mutex
+	Watchlist map[dh.EntityId]bool
 
 	mu *sync.Mutex
 }
 
-func NewHViewStore(subjects ...EntityId) *HRawViewStore {
-	store := &HRawViewStore{
-		Tables:    make(map[EntityId]*HTable),
-		Locks:     make(map[EntityId]*sync.Mutex),
-		Watchlist: make(map[EntityId]bool),
+func NewRawHealthStorage(subjects ...dh.EntityId) *RawHealthStorage {
+	store := &RawHealthStorage{
+		Tenants:   make(map[dh.EntityId]*dh.Stereo),
+		Locks:     make(map[dh.EntityId]*sync.Mutex),
+		Watchlist: make(map[dh.EntityId]bool),
 
 		mu: &sync.Mutex{},
 	}
-	var table *HTable
+	var stereo *dh.Stereo
 	for _, subject := range subjects {
 		store.Watchlist[subject] = true
 		store.Locks[subject] = new(sync.Mutex)
-		table = new(HTable)
-		table.Subject = subject
-		table.Views = make(map[EntityId]*HView)
-		store.Tables[subject] = table
+		stereo = new(dh.Stereo)
+		stereo.Subject = subject
+		stereo.Views = make(map[dh.EntityId]*dh.View)
+		store.Tenants[subject] = stereo
 	}
 	return store
 }
 
-var _ ViewStorage = new(HRawViewStore)
+var _ dh.HealthStorage = new(RawHealthStorage)
 
-func (self *HRawViewStore) ObserveSubject(subject EntityId, reply *bool) error {
+func (self *RawHealthStorage) ObserveSubject(subject dh.EntityId, reply *bool) error {
 	_, ok := self.Watchlist[subject]
 	self.Watchlist[subject] = true
 	*reply = !ok
 	return nil
 }
 
-func (self *HRawViewStore) StopObservingSubject(subject EntityId, reply *bool) error {
+func (self *RawHealthStorage) StopObservingSubject(subject dh.EntityId, reply *bool) error {
 	_, ok := self.Watchlist[subject]
 	delete(self.Watchlist, subject)
 	*reply = ok
 	return nil
 }
 
-func (self *HRawViewStore) AddReport(report *HReport, reply *int) error {
+func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
@@ -74,22 +74,22 @@ func (self *HRawViewStore) AddReport(report *HReport, reply *int) error {
 	}
 	self.mu.Unlock()
 	l.Lock()
-	table, ok := self.Tables[report.Subject]
+	stereo, ok := self.Tenants[report.Subject]
 	if !ok {
-		table = &HTable{
+		stereo = &dh.Stereo{
 			Subject: report.Subject,
-			Views:   make(map[EntityId]*HView),
+			Views:   make(map[dh.EntityId]*dh.View),
 		}
-		self.Tables[report.Subject] = table
+		self.Tenants[report.Subject] = stereo
 	}
-	view, ok := table.Views[report.Observer]
+	view, ok := stereo.Views[report.Observer]
 	if !ok {
-		view = &HView{
+		view = &dh.View{
 			Observer:     report.Observer,
 			Subject:      report.Subject,
 			Observations: list.New(),
 		}
-		table.Views[report.Observer] = view
+		stereo.Views[report.Observer] = view
 		util.LogD(StoreTag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations.PushBack(&report.Observation)

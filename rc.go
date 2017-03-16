@@ -1,4 +1,4 @@
-package config
+package deephealth
 
 import (
 	"encoding/json"
