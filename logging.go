@@ -36,6 +36,10 @@ func NewLogger(level LogLevel, out io.Writer, prefix string) *Logger {
 
 var logger *Logger = NewLogger(DebugLevel, os.Stdout, "DeepHealth:")
 
+func SetLogLevel(level LogLevel) {
+	logger.Level = level
+}
+
 func LogD(tag string, format string, a ...interface{}) {
 	if logger.Level >= DebugLevel {
 		_, fn, line, _ := runtime.Caller(1)

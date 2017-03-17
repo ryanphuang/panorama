@@ -30,4 +30,5 @@ func main() {
 	storage := store.NewRawHealthStorage("TS_1", "TS_2", "TS_3", "TS_4")
 	hs := service.NewHealthService(faddr, "XFE_1", storage)
 	hs.Start()
+	<-hs.Done
 }

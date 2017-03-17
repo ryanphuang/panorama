@@ -1,7 +1,6 @@
 package service
 
 import (
-	"fmt"
 	"net"
 	"net/rpc"
 
@@ -16,6 +15,7 @@ type HealthService struct {
 	Addr    string
 	Owner   dh.EntityId
 	Storage dh.HealthStorage
+	Done    chan bool
 
 	alive    bool
 	listener net.Listener
@@ -26,6 +26,7 @@ func NewHealthService(addr string, eid dh.EntityId, storage dh.HealthStorage) *H
 	hs.Addr = addr
 	hs.Owner = eid
 	hs.Storage = storage
+	hs.Done = make(chan bool)
 	hs.alive = true
 	return hs
 }
@@ -54,7 +55,6 @@ var _ dh.HealthService = new(HealthService)
 
 func (hs *HealthService) Start() error {
 	server := rpc.NewServer()
-	fmt.Println("real")
 	err := server.Register(hs)
 	if err != nil {
 		dh.LogF(tag, "Fail to register RPC server")
@@ -69,13 +69,11 @@ func (hs *HealthService) Start() error {
 			conn, err := hs.listener.Accept()
 			if err == nil {
 				go func() {
-					fmt.Println("Accepted a connection!")
+					dh.LogD(tag, "Accepted a connection!")
 					server.ServeConn(conn)
-					fmt.Println("Done with a connection!")
 					conn.Close()
 				}()
 			} else {
-				fmt.Println("Failed!!!")
 				dh.LogE(tag, "Fail to accept connection %s", err)
 			}
 		}
@@ -86,4 +84,5 @@ func (hs *HealthService) Start() error {
 func (hs *HealthService) Stop() {
 	hs.alive = false
 	hs.listener.Close()
+	hs.Done <- true
 }
