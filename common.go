@@ -27,3 +27,9 @@ type HealthService interface {
 	HealthGossip
 	HealthStatus
 }
+
+type HealthServiceConfig struct {
+	Addr     string
+	Owner    EntityId
+	Subjects []EntityId
+}

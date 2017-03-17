@@ -52,7 +52,7 @@ func (hs *HealthService) GetReport(subject dh.EntityId, report *dh.Report) error
 
 var _ dh.HealthService = new(HealthService)
 
-func (hs *HealthService) Start() {
+func (hs *HealthService) Start() error {
 	server := rpc.NewServer()
 	fmt.Println("real")
 	err := server.Register(hs)
@@ -64,20 +64,23 @@ func (hs *HealthService) Start() {
 		dh.LogF(tag, "Fail to listen to address %s", hs.Addr)
 	}
 	hs.listener = listener
-	for hs.alive {
-		conn, err := hs.listener.Accept()
-		if err == nil {
-			go func() {
-				fmt.Println("Accepted a connection!")
-				server.ServeConn(conn)
-				fmt.Println("Done with a connection!")
-				conn.Close()
-			}()
-		} else {
-			fmt.Println("Failed!!!")
-			dh.LogE(tag, "Fail to accept connection %s", err)
+	go func() {
+		for hs.alive {
+			conn, err := hs.listener.Accept()
+			if err == nil {
+				go func() {
+					fmt.Println("Accepted a connection!")
+					server.ServeConn(conn)
+					fmt.Println("Done with a connection!")
+					conn.Close()
+				}()
+			} else {
+				fmt.Println("Failed!!!")
+				dh.LogE(tag, "Fail to accept connection %s", err)
+			}
 		}
-	}
+	}()
+	return nil
 }
 
 func (hs *HealthService) Stop() {
