@@ -7,7 +7,8 @@ type Status uint8
 type EntityId string
 
 const (
-	UNKNOWN Status = iota
+	INVALID Status = iota
+	NA
 	HEALTHY
 	MAYBE_UNHEALTHY
 	UNHEALTHY
@@ -51,6 +52,23 @@ type Panorama struct {
 	Views   map[EntityId]*View // various observers' reports about the subject
 }
 
+func StatusFromStr(status string) Status {
+	switch status {
+	case "u":
+		return UNHEALTHY
+	case "h":
+		return HEALTHY
+	case "m":
+		return MAYBE_UNHEALTHY
+	case "d":
+		return DYING
+	case "dd":
+		return DEAD
+	default:
+		return INVALID
+	}
+}
+
 func (self *Observation) SetMetric(name string, status Status, score float32) bool {
 	metric, ok := self.Metrics[name]
 	if !ok {
@@ -83,7 +101,7 @@ func (self *Observation) AddMetric(name string, status Status, score float32) *O
 func NewObservation(time time.Time, names ...string) *Observation {
 	metrics := make(Metrics)
 	for _, name := range names {
-		metrics[name] = &Metric{Name: name, Status: UNKNOWN, Score: 0.0}
+		metrics[name] = &Metric{Name: name, Status: INVALID, Score: 0.0}
 	}
 	return &Observation{Ts: time, Metrics: metrics}
 }
