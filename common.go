@@ -13,5 +13,17 @@ type HealthStorage interface {
 }
 
 type HealthGossip interface {
+	// Gossip a report to other peers
 	GossipReport(report *Report, reply *int) error
+}
+
+type HealthStatus interface {
+	// Query the health status of an entity
+	GetReport(subject EntityId, reply *Report) error
+}
+
+type HealthService interface {
+	HealthStorage
+	HealthGossip
+	HealthStatus
 }

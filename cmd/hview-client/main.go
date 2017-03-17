@@ -22,20 +22,19 @@ func main() {
 		os.Exit(1)
 	}
 	addr := args[0]
-	c := client.NewSimpleClient(addr)
+	c := client.NewClient(addr, false)
 	o := dh.NewObservation(time.Now(), "cpu", "disk", "network")
 	o.SetMetric("cpu", dh.UNHEALTHY, 30)
 	o.SetMetric("disk", dh.HEALTHY, 90)
 	o.SetMetric("network", dh.HEALTHY, 95)
 	report := &dh.Report{
-		Observer:    "HS_2",
-		Subject:     "XFE_3",
+		Observer:    "XFE_2",
+		Subject:     "TS_2",
 		Observation: *o,
 	}
 	var reply int
 	fmt.Printf("Calling add report to %s\n", addr)
-	// var msg string = "hello world"
-	c.Call("RawHealthStorage.AddReport", report, &reply)
+	c.AddReport(report, &reply)
 	fmt.Printf("Got reply %d\n", reply)
 	fmt.Println(report.Subject)
 }

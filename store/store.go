@@ -4,13 +4,14 @@ import (
 	"container/list"
 	"fmt"
 	"sync"
+	"time"
 
 	dh "deephealth"
 )
 
 const (
 	MaxReportPerView = 5 // maximum number of reports to store for a given view
-	StoreTag         = "store"
+	tag              = "store"
 )
 
 type RawHealthStorage struct {
@@ -62,11 +63,11 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
-		dh.LogI(StoreTag, "%s not in watch list, ignore report...", report.Subject)
+		dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
 		*reply = 1
 		return nil
 	}
-	dh.LogD(StoreTag, "add report for %s...", report.Subject)
+	dh.LogD(tag, "add report for %s...", report.Subject)
 	self.mu.Lock()
 	l, ok := self.Locks[report.Subject]
 	if !ok {
@@ -91,14 +92,29 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 			Observations: list.New(),
 		}
 		stereo.Views[report.Observer] = view
-		dh.LogD(StoreTag, "create view for %s->%s...", report.Observer, report.Subject)
+		dh.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations.PushBack(&report.Observation)
+	dh.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, report.Observation)
 	if view.Observations.Len() > MaxReportPerView {
-		dh.LogD(StoreTag, "truncating list")
+		dh.LogD(tag, "truncating list")
 		view.Observations.Remove(view.Observations.Front())
 	}
 	l.Unlock()
+	self.Dump()
 	*reply = 0
 	return nil
+}
+
+func (self *RawHealthStorage) Dump() {
+	for subject, panorama := range self.Tenants {
+		fmt.Printf("=============%s=============\n", subject)
+		for observer, view := range panorama.Views {
+			fmt.Printf("%d observations for %s->%s\n", view.Observations.Len(), observer, subject)
+			for e := view.Observations.Front(); e != nil; e = e.Next() {
+				val := e.Value.(*dh.Observation)
+				fmt.Printf("|%s| %s %s\n", observer, val.Ts.Format(time.UnixDate), val.Metrics)
+			}
+		}
+	}
 }

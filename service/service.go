@@ -6,7 +6,6 @@ import (
 	"net/rpc"
 
 	dh "deephealth"
-	"deephealth/store"
 )
 
 const (
@@ -15,59 +14,48 @@ const (
 
 type HealthService struct {
 	Addr    string
-	EId     dh.EntityId
+	Owner   dh.EntityId
 	Storage dh.HealthStorage
 
 	alive    bool
 	listener net.Listener
 }
 
-type Chat string
-
-func (t *Chat) Len(msg string, length *int) error {
-	*length = len(msg)
-	return nil
-}
-
-func (t *Chat) AddReport(report *dh.Report, reply *int) error {
-	fmt.Println("Got report from %s", report.Subject)
-	*reply = len(report.Subject)
-	return nil
-}
-
-type DummyHealthStorage string
-
-func (self *DummyHealthStorage) ObserveSubject(subject dh.EntityId, reply *bool) error {
-	return nil
-}
-
-func (self *DummyHealthStorage) StopObservingSubject(subject dh.EntityId, reply *bool) error {
-	return nil
-}
-
-func (self *DummyHealthStorage) AddReport(report *dh.Report, reply *int) error {
-	fmt.Printf("Receive report at dummy storage from %s to %s\n", report.Subject, report.Observer)
-	*reply = 100
-	return nil
-}
-
-var _ dh.HealthStorage = new(DummyHealthStorage)
-var _ dh.HealthStorage = store.NewRawHealthStorage("XFE_1", "XFE_2", "XFE_3")
-
 func NewHealthService(addr string, eid dh.EntityId, storage dh.HealthStorage) *HealthService {
 	hs := new(HealthService)
 	hs.Addr = addr
-	hs.EId = eid
+	hs.Owner = eid
 	hs.Storage = storage
 	hs.alive = true
 	return hs
 }
 
+func (hs *HealthService) ObserveSubject(subject dh.EntityId, reply *bool) error {
+	return hs.Storage.ObserveSubject(subject, reply)
+}
+
+func (hs *HealthService) StopObservingSubject(subject dh.EntityId, reply *bool) error {
+	return hs.Storage.StopObservingSubject(subject, reply)
+}
+
+func (hs *HealthService) AddReport(report *dh.Report, reply *int) error {
+	return hs.Storage.AddReport(report, reply)
+}
+
+func (hs *HealthService) GossipReport(report *dh.Report, reply *int) error {
+	return nil
+}
+
+func (hs *HealthService) GetReport(subject dh.EntityId, report *dh.Report) error {
+	return nil
+}
+
+var _ dh.HealthService = new(HealthService)
+
 func (hs *HealthService) Start() {
 	server := rpc.NewServer()
-	var storage dh.HealthStorage = store.NewRawHealthStorage("XFE_1", "XFE_2", "XFE_3")
-	fmt.Println("dummy")
-	err := server.Register(storage)
+	fmt.Println("real")
+	err := server.Register(hs)
 	if err != nil {
 		dh.LogF(tag, "Fail to register RPC server")
 	}
