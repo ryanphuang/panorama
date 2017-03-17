@@ -1,0 +1,48 @@
+syntax = "proto3";
+package idl;
+
+import "google/protobuf/timestamp.proto";
+
+enum Status {
+  INVALID = 0;
+  NA = 1;
+  HEALTHY = 2;
+  MAYBE_UNHEALTHY = 3;
+  UNHEALTHY = 4;
+  DYING = 5;
+  DEAD = 6;
+}
+
+// A metric is a single aspect of an entity's health
+message Metric {
+  string name = 1; // name of the metric, e.g., CPU, Network
+  Status status = 2; // status for this metric
+  float score = 3; // actual score for this metric
+}
+
+// An observation is a collection of a metrics measuring
+// an entity's health at a particular time
+message Observation {
+  google.protobuf.Timestamp ts = 1; // time when the observation was made
+  map<string, Metric> metrics = 2; // actual scores for each metric
+}
+
+// A report is an observation attached with the observer and the observed (subject)
+message Report {
+  string observer = 1; // the entity that made the report
+  string subject = 2;  // the entity whose health is being reported by the observer
+  Observation observation = 3; // the observation that reflects an entity's health
+}
+
+// A view is a continuous stream of reports made by an observer for a subject
+message View {
+  string observer = 1; // who made the observation
+  string subject = 2;  // the entity whose health is being reported by the observer
+  repeated Observation observations = 3; // all the observations for this subject reported by the observer
+}
+
+// A panorama is a collection of views from different observers about the same subject
+message Panorama {
+  string subject = 1;  // the entity whose health information is stored
+  map<string, View> views = 2; // various observers' reports about the subject
+}
