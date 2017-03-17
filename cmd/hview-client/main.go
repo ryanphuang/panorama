@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"time"
 
@@ -34,7 +35,10 @@ func main() {
 	}
 	var reply int
 	fmt.Printf("Calling add report to %s\n", addr)
-	c.AddReport(report, &reply)
+	err := c.AddReport(report, &reply)
+	if err != nil {
+		log.Fatal(err)
+	}
 	fmt.Printf("Got reply %d\n", reply)
 	fmt.Println(report.Subject)
 }
