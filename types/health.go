@@ -1,4 +1,4 @@
-package deephealth
+package types
 
 import "time"
 import "container/list"

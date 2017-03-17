@@ -1,4 +1,4 @@
-package deephealth
+package types
 
 type HealthStorage interface {
 	// Add a subject to the observing subject list
