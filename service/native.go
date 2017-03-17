@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	tag = "service"
+	tag = "native_service"
 )
 
 type HealthService struct {
