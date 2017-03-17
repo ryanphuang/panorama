@@ -21,8 +21,8 @@ const (
 var c *client.Client
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 var (
-	local = flag.Bool("local", true, "whether to perform localhost test only")
-	faddr = flag.String("addr", "localhost:30000", "use this address instead of localhost")
+	remote = flag.Bool("remote", false, "whether to perform remote service test or not")
+	faddr  = flag.String("addr", "localhost:30000", "use this address instead of localhost")
 )
 
 func BenchmarkAddReport(b *testing.B) {
@@ -44,7 +44,7 @@ func BenchmarkAddReport(b *testing.B) {
 func TestMain(m *testing.M) {
 	flag.Parse()
 	var addr string
-	if *local {
+	if !*remote {
 		port := portstart + int(r.Intn(portend-portstart))
 		addr = fmt.Sprintf("localhost:%d", port)
 		storage := store.NewRawHealthStorage("TS_1", "TS_2", "TS_3", "TS_4")
