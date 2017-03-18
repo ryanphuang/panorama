@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	dh "deephealth"
 	"deephealth/client"
+	dt "deephealth/types"
 )
 
 const (
@@ -35,14 +35,14 @@ func logError(e error) {
 	}
 }
 
-var observer dh.EntityId
+var observer dt.EntityId
 
-func runCmd(c *client.Client, args []string) bool {
-	var subject dh.EntityId
-	var report dh.Report
-	var observation *dh.Observation
+func runCmd(c *client.NClient, args []string) bool {
+	var subject dt.EntityId
+	var report dt.Report
+	var observation *dt.Observation
 	var metric string
-	var status dh.Status
+	var status dt.Status
 	var err error
 	var ret int
 	var score float64
@@ -50,14 +50,14 @@ func runCmd(c *client.Client, args []string) bool {
 	cmd := args[0]
 	switch cmd {
 	case "report":
-		subject = dh.EntityId(args[1])
-		observation = dh.NewObservation(time.Now())
+		subject = dt.EntityId(args[1])
+		observation = dt.NewObservation(time.Now())
 		for i := 2; i < len(args); i++ {
 			parts := strings.Split(args[i], ":")
 			if len(parts) == 3 {
 				metric = parts[0]
-				status = dh.StatusFromStr(parts[1])
-				if status == dh.INVALID {
+				status = dt.StatusFromStr(parts[1])
+				if status == dt.INVALID {
 					logError(fmt.Errorf("invalid health metric %s\n", args[i]))
 					break
 				}
@@ -73,25 +73,29 @@ func runCmd(c *client.Client, args []string) bool {
 			}
 		}
 		if len(observer) == 0 {
-			observer = dh.EntityId("XFE_0") // default observer
+			observer = dt.EntityId("XFE_0") // default observer
 		}
-		report = dh.Report{
+		report = dt.Report{
 			Observer:    observer,
 			Subject:     subject,
 			Observation: *observation,
 		}
-		logError(c.AddReport(&report, &ret))
-		fmt.Println("Submitted")
+		err := c.AddReport(&report, &ret)
+		if err == nil {
+			fmt.Println("Submitted")
+		} else {
+			logError(err)
+		}
 
 	case "get":
-		subject = dh.EntityId(args[1])
+		subject = dt.EntityId(args[1])
 		logError(c.GetReport(subject, &report))
 		fmt.Println(report)
 	case "me":
 		if len(args) == 1 {
 			fmt.Println(observer)
 		} else {
-			observer = dh.EntityId(args[1])
+			observer = dt.EntityId(args[1])
 		}
 	case "help":
 		fmt.Println(cmdHelp)
@@ -103,7 +107,7 @@ func runCmd(c *client.Client, args []string) bool {
 	return false
 }
 
-func runPrompt(c *client.Client) {
+func runPrompt(c *client.NClient) {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Print("> ")

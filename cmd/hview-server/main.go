@@ -4,12 +4,12 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
-	dh "deephealth"
 	"deephealth/service"
-	"deephealth/store"
+	dt "deephealth/types"
 )
 
 var (
@@ -21,19 +21,33 @@ var (
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func main() {
+	flag.Usage = func() {
+		fmt.Printf("Usage: %s [options] ID\n", os.Args[0])
+		flag.PrintDefaults()
+	}
+
 	flag.Parse()
 	faddr := *addr
 	if !strings.ContainsAny(*addr, ":") {
 		port := *portstart + int(r.Intn(*portend-*portstart))
 		faddr = fmt.Sprintf("%s:%d", faddr, port)
 	}
-	fmt.Printf("Starting health service at %s\n", faddr)
-	subjects := make([]dh.EntityId, 100)
-	for i := 1; i <= 100; i++ {
-		subjects[i-1] = dh.EntityId(fmt.Sprintf("TS_%d", i))
+	args := flag.Args()
+	if len(args) != 1 {
+		flag.Usage()
+		os.Exit(1)
 	}
-	storage := store.NewRawHealthStorage(subjects...)
-	hs := service.NewHealthService(faddr, "XFE_1", storage)
+	fmt.Printf("Starting health service at %s\n", faddr)
+	subjects := make([]dt.EntityId, 100)
+	for i := 1; i <= 100; i++ {
+		subjects[i-1] = dt.EntityId(fmt.Sprintf("TS_%d", i))
+	}
+	config := &dt.HealthServerConfig{
+		Addr:     faddr,
+		Owner:    dt.EntityId(args[0]),
+		Subjects: subjects,
+	}
+	hs := service.NewHealthNServer(config)
 	hs.Start()
 	<-hs.Done
 }

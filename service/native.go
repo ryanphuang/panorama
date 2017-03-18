@@ -5,55 +5,60 @@ import (
 	"net/rpc"
 
 	dh "deephealth"
+	"deephealth/store"
+	dt "deephealth/types"
 )
 
 const (
 	tag = "native_service"
 )
 
-type HealthService struct {
+type HealthNServer struct {
 	Addr    string
-	Owner   dh.EntityId
-	Storage dh.HealthStorage
+	Owner   dt.EntityId
+	Storage dt.HealthStorage
 	Done    chan bool
 
 	alive    bool
 	listener net.Listener
 }
 
-func NewHealthService(addr string, eid dh.EntityId, storage dh.HealthStorage) *HealthService {
-	hs := new(HealthService)
-	hs.Addr = addr
-	hs.Owner = eid
+func NewHealthNServer(config *dt.HealthServerConfig) *HealthNServer {
+	hs := new(HealthNServer)
+	hs.Addr = config.Addr
+	hs.Owner = config.Owner
+
+	storage := store.NewRawHealthStorage(config.Subjects...)
 	hs.Storage = storage
 	hs.Done = make(chan bool)
 	hs.alive = true
 	return hs
 }
 
-func (hs *HealthService) ObserveSubject(subject dh.EntityId, reply *bool) error {
-	return hs.Storage.ObserveSubject(subject, reply)
-}
-
-func (hs *HealthService) StopObservingSubject(subject dh.EntityId, reply *bool) error {
-	return hs.Storage.StopObservingSubject(subject, reply)
-}
-
-func (hs *HealthService) AddReport(report *dh.Report, reply *int) error {
-	return hs.Storage.AddReport(report, reply)
-}
-
-func (hs *HealthService) GossipReport(report *dh.Report, reply *int) error {
+func (hs *HealthNServer) ObserveSubject(subject dt.EntityId, reply *bool) error {
+	*reply = hs.Storage.ObserveSubject(subject)
 	return nil
 }
 
-func (hs *HealthService) GetReport(subject dh.EntityId, report *dh.Report) error {
+func (hs *HealthNServer) StopObservingSubject(subject dt.EntityId, reply *bool) error {
+	*reply = hs.Storage.StopObservingSubject(subject)
 	return nil
 }
 
-var _ dh.HealthService = new(HealthService)
+func (hs *HealthNServer) AddReport(report *dt.Report, reply *int) error {
+	*reply = hs.Storage.AddReport(report)
+	return nil
+}
 
-func (hs *HealthService) Start() error {
+func (hs *HealthNServer) GossipReport(report *dt.Report, reply *int) error {
+	return nil
+}
+
+func (hs *HealthNServer) GetReport(subject dt.EntityId, report *dt.Report) error {
+	return nil
+}
+
+func (hs *HealthNServer) Start() error {
 	server := rpc.NewServer()
 	err := server.Register(hs)
 	if err != nil {
@@ -81,7 +86,7 @@ func (hs *HealthService) Start() error {
 	return nil
 }
 
-func (hs *HealthService) Stop() {
+func (hs *HealthNServer) Stop() {
 	hs.alive = false
 	hs.listener.Close()
 	hs.Done <- true

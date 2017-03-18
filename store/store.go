@@ -7,6 +7,7 @@ import (
 	"time"
 
 	dh "deephealth"
+	dt "deephealth/types"
 )
 
 const (
@@ -14,59 +15,62 @@ const (
 	tag              = "store"
 )
 
+const (
+	REPORT_IGNORED int = iota
+	REPORT_ACCEPTED
+	REPORT_FAILED
+)
+
 type RawHealthStorage struct {
-	Tenants   map[dh.EntityId]*dh.Panorama
-	Locks     map[dh.EntityId]*sync.Mutex
-	Watchlist map[dh.EntityId]bool
+	Tenants   map[dt.EntityId]*dt.Panorama
+	Locks     map[dt.EntityId]*sync.Mutex
+	Watchlist map[dt.EntityId]bool
 
 	mu *sync.Mutex
 }
 
-func NewRawHealthStorage(subjects ...dh.EntityId) *RawHealthStorage {
+func NewRawHealthStorage(subjects ...dt.EntityId) *RawHealthStorage {
 	store := &RawHealthStorage{
-		Tenants:   make(map[dh.EntityId]*dh.Panorama),
-		Locks:     make(map[dh.EntityId]*sync.Mutex),
-		Watchlist: make(map[dh.EntityId]bool),
+		Tenants:   make(map[dt.EntityId]*dt.Panorama),
+		Locks:     make(map[dt.EntityId]*sync.Mutex),
+		Watchlist: make(map[dt.EntityId]bool),
 
 		mu: &sync.Mutex{},
 	}
-	var stereo *dh.Panorama
+	var stereo *dt.Panorama
 	for _, subject := range subjects {
 		store.Watchlist[subject] = true
 		store.Locks[subject] = new(sync.Mutex)
-		stereo = new(dh.Panorama)
+		stereo = new(dt.Panorama)
 		stereo.Subject = subject
-		stereo.Views = make(map[dh.EntityId]*dh.View)
+		stereo.Views = make(map[dt.EntityId]*dt.View)
 		store.Tenants[subject] = stereo
 	}
 	return store
 }
 
-var _ dh.HealthStorage = new(RawHealthStorage)
+var _ dt.HealthStorage = new(RawHealthStorage)
 
-func (self *RawHealthStorage) ObserveSubject(subject dh.EntityId, reply *bool) error {
+func (self *RawHealthStorage) ObserveSubject(subject dt.EntityId) bool {
 	_, ok := self.Watchlist[subject]
 	self.Watchlist[subject] = true
-	*reply = !ok
-	return nil
+	return !ok
 }
 
-func (self *RawHealthStorage) StopObservingSubject(subject dh.EntityId, reply *bool) error {
+func (self *RawHealthStorage) StopObservingSubject(subject dt.EntityId) bool {
 	_, ok := self.Watchlist[subject]
 	delete(self.Watchlist, subject)
-	*reply = ok
-	return nil
+	return ok
 }
 
-func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
+func (self *RawHealthStorage) AddReport(report *dt.Report) int {
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
 		dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
-		*reply = 1
-		return nil
+		return REPORT_IGNORED
 	}
-	dh.LogD(tag, "add report for %s from...", report.Subject, report.Observer)
+	dh.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
 	self.mu.Lock()
 	l, ok := self.Locks[report.Subject]
 	if !ok {
@@ -77,15 +81,15 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 	l.Lock()
 	stereo, ok := self.Tenants[report.Subject]
 	if !ok {
-		stereo = &dh.Panorama{
+		stereo = &dt.Panorama{
 			Subject: report.Subject,
-			Views:   make(map[dh.EntityId]*dh.View),
+			Views:   make(map[dt.EntityId]*dt.View),
 		}
 		self.Tenants[report.Subject] = stereo
 	}
 	view, ok := stereo.Views[report.Observer]
 	if !ok {
-		view = &dh.View{
+		view = &dt.View{
 			Observer:     report.Observer,
 			Subject:      report.Subject,
 			Observations: list.New(),
@@ -100,8 +104,7 @@ func (self *RawHealthStorage) AddReport(report *dh.Report, reply *int) error {
 		view.Observations.Remove(view.Observations.Front())
 	}
 	l.Unlock()
-	*reply = 0
-	return nil
+	return REPORT_ACCEPTED
 }
 
 func (self *RawHealthStorage) Dump() {
@@ -110,7 +113,7 @@ func (self *RawHealthStorage) Dump() {
 		for observer, view := range panorama.Views {
 			fmt.Printf("%d observations for %s->%s\n", view.Observations.Len(), observer, subject)
 			for e := view.Observations.Front(); e != nil; e = e.Next() {
-				val := e.Value.(*dh.Observation)
+				val := e.Value.(*dt.Observation)
 				fmt.Printf("|%s| %s %s\n", observer, val.Ts.Format(time.UnixDate), val.Metrics)
 			}
 		}

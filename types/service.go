@@ -2,33 +2,27 @@ package types
 
 type HealthStorage interface {
 	// Add a subject to the observing subject list
-	ObserveSubject(subject EntityId, reply *bool) error
+	ObserveSubject(subject EntityId) bool
 
 	// Stop observing a particular subject, all the reports
 	// concerning this subject will be ignored
-	StopObservingSubject(subject EntityId, reply *bool) error
+	StopObservingSubject(subject EntityId) bool
 
 	// Add a report to the view storage
-	AddReport(report *Report, reply *int) error
+	AddReport(report *Report) int
 }
 
 type HealthGossip interface {
 	// Gossip a report to other peers
-	GossipReport(report *Report, reply *int) error
+	GossipReport(report *Report) int
 }
 
 type HealthStatus interface {
 	// Query the health status of an entity
-	GetReport(subject EntityId, reply *Report) error
+	GetReport(subject EntityId) *Report
 }
 
-type HealthService interface {
-	HealthStorage
-	HealthGossip
-	HealthStatus
-}
-
-type HealthServiceConfig struct {
+type HealthServerConfig struct {
 	Addr     string
 	Owner    EntityId
 	Subjects []EntityId
