@@ -52,23 +52,6 @@ type Panorama struct {
 	Views   map[EntityId]*View // various observers' reports about the subject
 }
 
-func StatusFromStr(status string) Status {
-	switch status {
-	case "u":
-		return UNHEALTHY
-	case "h":
-		return HEALTHY
-	case "m":
-		return MAYBE_UNHEALTHY
-	case "d":
-		return DYING
-	case "dd":
-		return DEAD
-	default:
-		return INVALID
-	}
-}
-
 func (self *Observation) SetMetric(name string, status Status, score float32) bool {
 	metric, ok := self.Metrics[name]
 	if !ok {

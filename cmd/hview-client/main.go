@@ -9,17 +9,16 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
+	pb "deephealth/build/gen"
 	"deephealth/client"
+	"deephealth/store"
 	dt "deephealth/types"
 )
 
 const (
-	help = `Usage:
-	hview-client <server address> [command <args...>]
-
-With no command specified to enter interactive mode. 
-` + cmdHelp
-
 	cmdHelp = `Command list:
 	 me observer
 	 report subject [<metric:status:score...>]
@@ -29,68 +28,115 @@ With no command specified to enter interactive mode.
 `
 )
 
+var (
+	g = flag.Bool("grpc", true, "use grpc service client")
+)
+
 func logError(e error) {
-	if e != nil {
-		fmt.Fprintln(os.Stderr, e)
-	}
+	fmt.Fprintln(os.Stderr, e)
 }
 
 var observer dt.EntityId
 
-func runCmd(c *client.NClient, args []string) bool {
-	var subject dt.EntityId
-	var report dt.Report
-	var observation *dt.Observation
+type uclient struct {
+	nc *client.NClient
+	gc pb.HealthServiceClient
+}
+
+func parseReport(args []string) *dt.Report {
+	var score float64
 	var metric string
 	var status dt.Status
 	var err error
+
+	subject := dt.EntityId(args[1])
+	observation := dt.NewObservation(time.Now())
+	for i := 2; i < len(args); i++ {
+		parts := strings.Split(args[i], ":")
+		if len(parts) == 3 {
+			metric = parts[0]
+			status = dt.StatusFromStr(parts[1])
+			if status == dt.INVALID {
+				logError(fmt.Errorf("invalid health metric %s\n", args[i]))
+				break
+			}
+			score, err = strconv.ParseFloat(parts[2], 32)
+			if err != nil {
+				logError(fmt.Errorf("invalid health metric %s\n", args[i]))
+				break
+			}
+			observation.AddMetric(metric, status, float32(score))
+		} else {
+			logError(fmt.Errorf("invalid health metric %s\n", args[i]))
+			break
+		}
+	}
+	if len(observer) == 0 {
+		observer = dt.EntityId("XFE_0") // default observer
+	}
+	return &dt.Report{
+		Observer:    observer,
+		Subject:     subject,
+		Observation: *observation,
+	}
+}
+
+func runCmd(u *uclient, args []string) bool {
+	var subject dt.EntityId
+	var report dt.Report
+	var err error
 	var ret int
-	var score float64
 
 	cmd := args[0]
 	switch cmd {
 	case "report":
-		subject = dt.EntityId(args[1])
-		observation = dt.NewObservation(time.Now())
-		for i := 2; i < len(args); i++ {
-			parts := strings.Split(args[i], ":")
-			if len(parts) == 3 {
-				metric = parts[0]
-				status = dt.StatusFromStr(parts[1])
-				if status == dt.INVALID {
-					logError(fmt.Errorf("invalid health metric %s\n", args[i]))
-					break
-				}
-				score, err = strconv.ParseFloat(parts[2], 32)
-				if err != nil {
-					logError(fmt.Errorf("invalid health metric %s\n", args[i]))
-					break
-				}
-				observation.AddMetric(metric, status, float32(score))
-			} else {
-				logError(fmt.Errorf("invalid health metric %s\n", args[i]))
-				break
+		r := parseReport(args)
+		if u.nc != nil {
+			err = u.nc.SubmitReport(r, &ret)
+			switch ret {
+			case store.REPORT_ACCEPTED:
+				fmt.Println("Accepted")
+			case store.REPORT_IGNORED:
+				fmt.Println("Ignored")
+			case store.REPORT_FAILED:
+				fmt.Println("Failed")
+			}
+			if err != nil {
+				logError(err)
+			}
+		} else {
+			pbr := dt.ReportToPb(r)
+			reply, err := u.gc.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: pbr})
+			switch reply.Result {
+			case pb.SubmitReportReply_ACCEPTED:
+				fmt.Println("Accepted")
+			case pb.SubmitReportReply_IGNORED:
+				fmt.Println("Ignored")
+			case pb.SubmitReportReply_FAILED:
+				fmt.Println("Failed")
+			}
+			if err != nil {
+				logError(err)
 			}
 		}
-		if len(observer) == 0 {
-			observer = dt.EntityId("XFE_0") // default observer
-		}
-		report = dt.Report{
-			Observer:    observer,
-			Subject:     subject,
-			Observation: *observation,
-		}
-		err := c.AddReport(&report, &ret)
-		if err == nil {
-			fmt.Println("Submitted")
-		} else {
-			logError(err)
-		}
-
 	case "get":
-		subject = dt.EntityId(args[1])
-		logError(c.GetReport(subject, &report))
-		fmt.Println(report)
+		if u.nc != nil {
+			subject = dt.EntityId(args[1])
+			err = u.nc.GetReport(subject, &report)
+			if err == nil {
+				fmt.Println(report)
+			} else {
+				logError(err)
+			}
+		} else {
+			reply, err := u.gc.GetReport(context.Background(), &pb.GetReportRequest{Subject: args[1]})
+			if err == nil {
+				rp := dt.ReportFromPb(reply.Report)
+				fmt.Println(*rp)
+			} else {
+				logError(err)
+			}
+		}
 	case "me":
 		if len(args) == 1 {
 			fmt.Println(observer)
@@ -107,7 +153,7 @@ func runCmd(c *client.NClient, args []string) bool {
 	return false
 }
 
-func runPrompt(c *client.NClient) {
+func runPrompt(u *uclient) {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Print("> ")
@@ -116,7 +162,7 @@ func runPrompt(c *client.NClient) {
 		line := scanner.Text()
 		args := fields(line)
 		if len(args) > 0 {
-			if runCmd(c, args) {
+			if runCmd(u, args) {
 				break
 			}
 		}
@@ -134,21 +180,38 @@ func fields(s string) []string {
 }
 
 func main() {
+	flag.Usage = func() {
+		fmt.Printf("Usage: %s [options] <server address> [command <args...>]\n\n", os.Args[0])
+		flag.PrintDefaults()
+		fmt.Println("\nIf no command was specified, the client enters an interactive mode.\n")
+		fmt.Println(cmdHelp)
+	}
 	flag.Parse()
 	args := flag.Args()
 	if len(args) < 1 || args[0] == "-h" || args[0] == "--help" {
-		fmt.Fprintln(os.Stderr, help)
+		flag.Usage()
 		os.Exit(1)
 	}
 
 	addr := args[0]
-	c := client.NewClient(addr, false)
-
 	cmdArgs := args[1:]
+
+	var u uclient
+
+	if *g {
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
+		if err != nil {
+			panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
+		}
+		defer conn.Close()
+		u.gc = pb.NewHealthServiceClient(conn)
+	} else {
+		u.nc = client.NewClient(addr, false)
+	}
 	if len(cmdArgs) == 0 {
-		runPrompt(c)
+		runPrompt(&u)
 		fmt.Println()
 	} else {
-		runCmd(c, cmdArgs)
+		runCmd(&u, cmdArgs)
 	}
 }

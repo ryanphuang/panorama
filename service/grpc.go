@@ -69,20 +69,33 @@ func (self *HealthGServer) Stop(graceful bool) error {
 	return nil
 }
 
-func (s *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
-
-	return &pb.SubmitReportReply{Result: pb.SubmitReportReply_IGNORED}, nil
+func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
+	report := dt.ReportFromPb(in.Report)
+	if report == nil {
+		return &pb.SubmitReportReply{Result: pb.SubmitReportReply_FAILED}, fmt.Errorf("Fail to parse report")
+	}
+	var result pb.SubmitReportReply_Status
+	rc, err := self.Storage.AddReport(report)
+	switch rc {
+	case store.REPORT_IGNORED:
+		result = pb.SubmitReportReply_IGNORED
+	case store.REPORT_FAILED:
+		result = pb.SubmitReportReply_FAILED
+	case store.REPORT_ACCEPTED:
+		result = pb.SubmitReportReply_ACCEPTED
+	}
+	return &pb.SubmitReportReply{Result: result}, err
 }
 
-func (s *HealthGServer) GetReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
+func (self *HealthGServer) GetReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
 	var report pb.Report
 	return &pb.GetReportReply{Report: &report}, nil
 }
 
-func (s *HealthGServer) ObserveSubject(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
+func (self *HealthGServer) ObserveSubject(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	return &pb.ObserveReply{Success: true}, nil
 }
 
-func (s *HealthGServer) StopObservingSubject(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
+func (self *HealthGServer) StopObservingSubject(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	return &pb.ObserveReply{Success: true}, nil
 }

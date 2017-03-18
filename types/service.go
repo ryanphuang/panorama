@@ -9,7 +9,7 @@ type HealthStorage interface {
 	StopObservingSubject(subject EntityId) bool
 
 	// Add a report to the view storage
-	AddReport(report *Report) int
+	AddReport(report *Report) (int, error)
 }
 
 type HealthGossip interface {

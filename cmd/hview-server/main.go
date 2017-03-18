@@ -14,6 +14,7 @@ import (
 
 var (
 	addr      = flag.String("addr", "localhost", "server listen address")
+	grpc      = flag.Bool("grpc", true, "use grpc service implementation")
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend   = flag.Int("port_end", 30000, "end of port range for a random port")
 )
@@ -47,7 +48,14 @@ func main() {
 		Owner:    dt.EntityId(args[0]),
 		Subjects: subjects,
 	}
-	hs := service.NewHealthNServer(config)
-	hs.Start()
-	<-hs.Done
+	if *grpc {
+		gs := service.NewHealthGServer(config)
+		errch := make(chan error)
+		gs.Start(errch)
+		<-errch
+	} else {
+		ns := service.NewHealthNServer(config)
+		ns.Start()
+		<-ns.Done
+	}
 }

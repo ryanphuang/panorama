@@ -63,12 +63,12 @@ func (self *RawHealthStorage) StopObservingSubject(subject dt.EntityId) bool {
 	return ok
 }
 
-func (self *RawHealthStorage) AddReport(report *dt.Report) int {
+func (self *RawHealthStorage) AddReport(report *dt.Report) (int, error) {
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		// subject is not in our watch list, ignore the report
 		dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
-		return REPORT_IGNORED
+		return REPORT_IGNORED, nil
 	}
 	dh.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
 	self.mu.Lock()
@@ -104,7 +104,7 @@ func (self *RawHealthStorage) AddReport(report *dt.Report) int {
 		view.Observations.Remove(view.Observations.Front())
 	}
 	l.Unlock()
-	return REPORT_ACCEPTED
+	return REPORT_ACCEPTED, nil
 }
 
 func (self *RawHealthStorage) Dump() {
