@@ -26,8 +26,8 @@ func (c *NClient) StopObservingSubject(subject dt.EntityId, reply *bool) error {
 	return c.r.Call("HealthNServer.StopObservingSubject", subject, &reply)
 }
 
-func (c *NClient) AddReport(report *dt.Report, reply *int) error {
-	return c.r.Call("HealthNServer.AddReport", report, &reply)
+func (c *NClient) SubmitReport(report *dt.Report, reply *int) error {
+	return c.r.Call("HealthNServer.SubmitReport", report, &reply)
 }
 
 func (c *NClient) GossipReport(report *dt.Report, reply *int) error {

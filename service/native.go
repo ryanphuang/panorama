@@ -45,7 +45,7 @@ func (hs *HealthNServer) StopObservingSubject(subject dt.EntityId, reply *bool) 
 	return nil
 }
 
-func (hs *HealthNServer) AddReport(report *dt.Report, reply *int) error {
+func (hs *HealthNServer) SubmitReport(report *dt.Report, reply *int) error {
 	*reply = hs.Storage.AddReport(report)
 	return nil
 }
