@@ -37,14 +37,14 @@ func NewRawHealthStorage(subjects ...dt.EntityId) *RawHealthStorage {
 
 		mu: &sync.Mutex{},
 	}
-	var stereo *dt.Panorama
+	var panorama *dt.Panorama
 	for _, subject := range subjects {
 		store.Watchlist[subject] = true
 		store.Locks[subject] = new(sync.Mutex)
-		stereo = new(dt.Panorama)
-		stereo.Subject = subject
-		stereo.Views = make(map[dt.EntityId]*dt.View)
-		store.Tenants[subject] = stereo
+		panorama = new(dt.Panorama)
+		panorama.Subject = subject
+		panorama.Views = make(map[dt.EntityId]*dt.View)
+		store.Tenants[subject] = panorama
 	}
 	return store
 }
@@ -83,22 +83,23 @@ func (self *RawHealthStorage) AddReport(report *dt.Report) (int, error) {
 	}
 	self.mu.Unlock()
 	l.Lock()
-	stereo, ok := self.Tenants[report.Subject]
+	defer l.Unlock()
+	panorama, ok := self.Tenants[report.Subject]
 	if !ok {
-		stereo = &dt.Panorama{
+		panorama = &dt.Panorama{
 			Subject: report.Subject,
 			Views:   make(map[dt.EntityId]*dt.View),
 		}
-		self.Tenants[report.Subject] = stereo
+		self.Tenants[report.Subject] = panorama
 	}
-	view, ok := stereo.Views[report.Observer]
+	view, ok := panorama.Views[report.Observer]
 	if !ok {
 		view = &dt.View{
 			Observer:     report.Observer,
 			Subject:      report.Subject,
 			Observations: list.New(),
 		}
-		stereo.Views[report.Observer] = view
+		panorama.Views[report.Observer] = view
 		dh.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations.PushBack(&report.Observation)
@@ -107,8 +108,41 @@ func (self *RawHealthStorage) AddReport(report *dt.Report) (int, error) {
 		dh.LogD(tag, "truncating list")
 		view.Observations.Remove(view.Observations.Front())
 	}
-	l.Unlock()
 	return REPORT_ACCEPTED, nil
+}
+
+func (self *RawHealthStorage) GetLatestReport(subject dt.EntityId) *dt.Report {
+	self.mu.Lock()
+	l, ok := self.Locks[subject]
+	if !ok {
+		return nil
+	}
+	self.mu.Unlock()
+	l.Lock()
+	defer l.Unlock()
+	panorama, ok := self.Tenants[subject]
+	if !ok {
+		return nil
+	}
+	var max_ts time.Time
+	var recent_ob *dt.Observation
+	var who dt.EntityId
+	first := true
+	for observer, view := range panorama.Views {
+		e := view.Observations.Back()
+		val := e.Value.(*dt.Observation)
+		if first || max_ts.Before(val.Ts) {
+			first = false
+			max_ts = val.Ts
+			recent_ob = val
+			who = observer
+		}
+	}
+	return &dt.Report{
+		Observer:    who,
+		Subject:     subject,
+		Observation: *recent_ob,
+	}
 }
 
 func (self *RawHealthStorage) Dump() {

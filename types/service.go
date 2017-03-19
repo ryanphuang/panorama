@@ -10,6 +10,9 @@ type HealthStorage interface {
 
 	// Add a report to the view storage
 	AddReport(report *Report) (int, error)
+
+	// Get the latest report for a subject
+	GetLatestReport(subject EntityId) *Report
 }
 
 type SummaryTable interface {

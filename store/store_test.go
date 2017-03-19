@@ -12,8 +12,7 @@ import (
 
 func TestAddSubject(t *testing.T) {
 	dh.SetLogLevel(dh.InfoLevel)
-	subjects := []dt.EntityId{"TS_1", "TS_2"}
-	store := NewRawHealthStorage(subjects...)
+	store := NewRawHealthStorage("TS_1", "TS_2")
 	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_3", metrics)
 	result, err := store.AddReport(report)
@@ -81,5 +80,70 @@ func TestAddReport(t *testing.T) {
 				t.Logf("|%s| %s %s", observer, val.Ts.Format(time.UnixDate), val.Metrics)
 			}
 		}
+	}
+}
+
+func TestRecentReport(t *testing.T) {
+	dh.SetLogLevel(dh.InfoLevel)
+	store := NewRawHealthStorage("TS_1", "TS_2")
+
+	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
+	report := dt.NewReport("FE_2", "TS_1", metrics)
+	store.AddReport(report)
+	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 90}}
+	report = dt.NewReport("FE_2", "TS_1", metrics)
+	store.AddReport(report)
+	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 70}}
+	report = dt.NewReport("FE_2", "TS_1", metrics)
+	store.AddReport(report)
+	metrics = map[string]dt.Value{"cpu": dt.Value{dt.UNHEALTHY, 30}}
+	report = dt.NewReport("FE_2", "TS_1", metrics)
+	store.AddReport(report)
+
+	ret := store.GetLatestReport("TS_1")
+	if ret.Observer != "FE_2" {
+		t.Errorf("Wrong subject in the latest report: %s\n", *ret)
+	}
+	metric, ok := ret.Observation.Metrics["cpu"]
+	if !ok {
+		t.Error("The latest report have a CPU metric")
+	}
+	if metric.Status != dt.UNHEALTHY || metric.Score != 30 {
+		t.Errorf("Wrong metric in the latest report: %s\n", metric)
+	}
+
+	time.Sleep(200 * time.Millisecond)
+	metrics = map[string]dt.Value{"memory": dt.Value{dt.UNHEALTHY, 20}}
+	report = dt.NewReport("FE_4", "TS_1", metrics)
+	store.AddReport(report)
+	ret = store.GetLatestReport("TS_1")
+	if ret.Observer != "FE_4" {
+		t.Errorf("Wrong subject in the latest report: %s\n", *ret)
+	}
+	metric, ok = ret.Observation.Metrics["memory"]
+	if !ok {
+		t.Error("The latest report have a memory metric")
+	}
+	if metric.Status != dt.UNHEALTHY || metric.Score != 20 {
+		t.Errorf("Wrong metric in the latest report: %s\n", metric)
+	}
+
+	time.Sleep(200 * time.Millisecond)
+	metrics = map[string]dt.Value{"network": dt.Value{dt.HEALTHY, 80}}
+	report = dt.NewReport("FE_5", "TS_1", metrics)
+	store.AddReport(report)
+	metrics = map[string]dt.Value{"memory": dt.Value{dt.HEALTHY, 70}}
+	report = dt.NewReport("FE_1", "TS_1", metrics)
+	store.AddReport(report)
+	ret = store.GetLatestReport("TS_1")
+	if ret.Observer != "FE_1" {
+		t.Errorf("Wrong subject in the latest report: %s\n", *ret)
+	}
+	metric, ok = ret.Observation.Metrics["memory"]
+	if !ok {
+		t.Error("The latest report have a memory metric")
+	}
+	if metric.Status != dt.HEALTHY || metric.Score != 70 {
+		t.Errorf("Wrong metric in the latest report: %s\n", metric)
 	}
 }
