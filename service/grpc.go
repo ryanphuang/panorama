@@ -92,10 +92,12 @@ func (self *HealthGServer) GetReport(ctx context.Context, in *pb.GetReportReques
 	return &pb.GetReportReply{Report: &report}, nil
 }
 
-func (self *HealthGServer) ObserveSubject(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	return &pb.ObserveReply{Success: true}, nil
+func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
+	ok := self.Storage.AddSubject(dt.EntityId(in.Subject))
+	return &pb.ObserveReply{Success: ok}, nil
 }
 
-func (self *HealthGServer) StopObservingSubject(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	return &pb.ObserveReply{Success: true}, nil
+func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
+	ok := self.Storage.RemoveSubject(dt.EntityId(in.Sujbect), true)
+	return &pb.ObserveReply{Success: ok}, nil
 }

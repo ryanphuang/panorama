@@ -2,14 +2,17 @@ package types
 
 type HealthStorage interface {
 	// Add a subject to the observing subject list
-	ObserveSubject(subject EntityId) bool
+	AddSubject(subject EntityId) bool
 
 	// Stop observing a particular subject, all the reports
 	// concerning this subject will be ignored
-	StopObservingSubject(subject EntityId) bool
+	RemoveSubject(subject EntityId, clean bool) bool
 
 	// Add a report to the view storage
 	AddReport(report *Report) (int, error)
+}
+
+type SummaryTable interface {
 }
 
 type HealthGossip interface {

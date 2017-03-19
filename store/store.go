@@ -51,15 +51,19 @@ func NewRawHealthStorage(subjects ...dt.EntityId) *RawHealthStorage {
 
 var _ dt.HealthStorage = new(RawHealthStorage)
 
-func (self *RawHealthStorage) ObserveSubject(subject dt.EntityId) bool {
+func (self *RawHealthStorage) AddSubject(subject dt.EntityId) bool {
 	_, ok := self.Watchlist[subject]
 	self.Watchlist[subject] = true
 	return !ok
 }
 
-func (self *RawHealthStorage) StopObservingSubject(subject dt.EntityId) bool {
+func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) bool {
 	_, ok := self.Watchlist[subject]
 	delete(self.Watchlist, subject)
+	if clean {
+		delete(self.Tenants, subject)
+		delete(self.Locks, subject)
+	}
 	return ok
 }
 

@@ -35,13 +35,13 @@ func NewHealthNServer(config *dt.HealthServerConfig) *HealthNServer {
 	return hs
 }
 
-func (hs *HealthNServer) ObserveSubject(subject dt.EntityId, reply *bool) error {
-	*reply = hs.Storage.ObserveSubject(subject)
+func (hs *HealthNServer) Observe(subject dt.EntityId, reply *bool) error {
+	*reply = hs.Storage.AddSubject(subject)
 	return nil
 }
 
-func (hs *HealthNServer) StopObservingSubject(subject dt.EntityId, reply *bool) error {
-	*reply = hs.Storage.StopObservingSubject(subject)
+func (hs *HealthNServer) StopObserving(subject dt.EntityId, reply *bool) error {
+	*reply = hs.Storage.RemoveSubject(subject, true)
 	return nil
 }
 
