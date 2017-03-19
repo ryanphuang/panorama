@@ -100,11 +100,7 @@ func ReportToPb(in *Report) *pb.Report {
 
 func MetricFromPb(in *pb.Metric) *Metric {
 	status := StatusFromPb(in.Status)
-	return &Metric{
-		Name:   in.Name,
-		Status: status,
-		Score:  in.Score,
-	}
+	return &Metric{in.Name, Value{status, in.Score}}
 }
 
 func ObservationFromPb(in *pb.Observation) *Observation {

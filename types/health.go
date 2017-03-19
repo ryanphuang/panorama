@@ -16,11 +16,16 @@ const (
 	DEAD
 )
 
-// A metric is a single aspect of an entity's health
-type Metric struct {
-	Name   string  // name of the metric, e.g., CPU, Network
+// A value is a measurement of a particular metric
+type Value struct {
 	Status Status  // status for this metric
 	Score  float32 // actual score for this metric
+}
+
+// A metric is a single aspect of an entity's health
+type Metric struct {
+	Name string // name of the metric, e.g., CPU, Network
+	Value
 }
 
 type Metrics map[string]*Metric
@@ -73,7 +78,7 @@ func (self *Observation) GetMetric(name string) *Metric {
 func (self *Observation) AddMetric(name string, status Status, score float32) *Observation {
 	metric, ok := self.Metrics[name]
 	if !ok {
-		self.Metrics[name] = &Metric{Name: name, Status: status, Score: score}
+		self.Metrics[name] = &Metric{name, Value{status, score}}
 	} else {
 		metric.Status = status
 		metric.Score = score
@@ -84,7 +89,19 @@ func (self *Observation) AddMetric(name string, status Status, score float32) *O
 func NewObservation(time time.Time, names ...string) *Observation {
 	metrics := make(Metrics)
 	for _, name := range names {
-		metrics[name] = &Metric{Name: name, Status: INVALID, Score: 0.0}
+		metrics[name] = &Metric{name, Value{INVALID, 0.0}}
 	}
 	return &Observation{Ts: time, Metrics: metrics}
+}
+
+func NewReport(observer EntityId, subject EntityId, metrics map[string]Value) *Report {
+	o := NewObservation(time.Now())
+	for k, v := range metrics {
+		o.AddMetric(k, v.Status, v.Score)
+	}
+	return &Report{
+		Observer:    observer,
+		Subject:     subject,
+		Observation: *o,
+	}
 }
