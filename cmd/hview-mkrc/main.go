@@ -7,6 +7,7 @@ import (
 	"time"
 
 	dh "deephealth"
+	dt "deephealth/types"
 )
 
 var (
@@ -49,10 +50,10 @@ func main() {
 		s = *sidstart
 		inc_s = true
 	}
-	rc := new(dh.RC)
-	rc.HealthServers = make(map[dh.EntityId]string)
+	rc := new(dt.RC)
+	rc.HealthServers = make(map[dt.EntityId]string)
 	for i := 0; i < *nserver; i++ {
-		eid := dh.EntityId(fmt.Sprintf("HS_%d", i+1))
+		eid := dt.EntityId(fmt.Sprintf("HS_%d", i+1))
 		if *localhost {
 			rc.HealthServers[eid] = fmt.Sprintf("localhost:%d", p)
 		} else {
