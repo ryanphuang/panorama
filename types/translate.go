@@ -87,6 +87,9 @@ func ObservationToPb(in *Observation) *pb.Observation {
 }
 
 func ReportToPb(in *Report) *pb.Report {
+	if in == nil {
+		return nil
+	}
 	observation := ObservationToPb(&in.Observation)
 	if observation == nil {
 		return nil
