@@ -1,4 +1,6 @@
 syntax = "proto3";
+option java_package = "edu.jhu.order.deephealth";
+
 package idl;
 
 import "google/protobuf/timestamp.proto";
