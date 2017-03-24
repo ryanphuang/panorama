@@ -122,14 +122,14 @@ func runCmd(u *uclient, args []string) bool {
 	case "get":
 		if u.nc != nil {
 			subject = dt.EntityId(args[1])
-			err = u.nc.GetReport(subject, &report)
+			err = u.nc.GetLatestReport(subject, &report)
 			if err == nil {
 				fmt.Println(report)
 			} else {
 				logError(err)
 			}
 		} else {
-			reply, err := u.gc.GetReport(context.Background(), &pb.GetReportRequest{Subject: args[1]})
+			reply, err := u.gc.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[1]})
 			if err == nil {
 				rp := dt.ReportFromPb(reply.Report)
 				fmt.Println(*rp)
