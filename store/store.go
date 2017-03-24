@@ -138,6 +138,9 @@ func (self *RawHealthStorage) GetLatestReport(subject dt.EntityId) *dt.Report {
 			who = observer
 		}
 	}
+	if recent_ob == nil {
+		return nil
+	}
 	return &dt.Report{
 		Observer:    who,
 		Subject:     subject,
