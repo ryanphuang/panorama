@@ -17,8 +17,8 @@ service HealthService {
 	// Submit a report to the view storage
   rpc SubmitReport(SubmitReportRequest) returns (SubmitReportReply) {}
 
-	// Query the health status of an entity
-  rpc GetReport(GetReportRequest) returns (GetReportReply) {}
+	// Query the latest health report of an entity
+  rpc GetLatestReport(GetReportRequest) returns (GetReportReply) {}
 }
 
 message ObserveRequest {

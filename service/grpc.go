@@ -87,9 +87,9 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 	return &pb.SubmitReportReply{Result: result}, err
 }
 
-func (self *HealthGServer) GetReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
-	var report pb.Report
-	return &pb.GetReportReply{Report: &report}, nil
+func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
+	report := self.Storage.GetLatestReport(dt.EntityId(in.Subject))
+	return &pb.GetReportReply{Report: dt.ReportToPb(report)}, nil
 }
 
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
@@ -98,6 +98,6 @@ func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (
 }
 
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	ok := self.Storage.RemoveSubject(dt.EntityId(in.Sujbect), true)
+	ok := self.Storage.RemoveSubject(dt.EntityId(in.Subject), true)
 	return &pb.ObserveReply{Success: ok}, nil
 }

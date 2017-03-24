@@ -34,6 +34,6 @@ func (c *NClient) GossipReport(report *dt.Report, reply *int) error {
 	return c.r.Call("HealthNServer.GossipReport", report, &reply)
 }
 
-func (c *NClient) GetReport(subject dt.EntityId, reply *dt.Report) error {
-	return c.r.Call("HealthNServer.GetReport", subject, &reply)
+func (c *NClient) GetLatestReport(subject dt.EntityId, reply *dt.Report) error {
+	return c.r.Call("HealthNServer.GetLatestReport", subject, &reply)
 }
