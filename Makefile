@@ -6,5 +6,5 @@ all: idl
 	go install ./...
 
 idl: $(idls)
-	mkdir -p builg/gen
+	mkdir -p build/gen
 	protoc -I=idl --go_out=plugins=grpc:build/gen idl/*.proto 
