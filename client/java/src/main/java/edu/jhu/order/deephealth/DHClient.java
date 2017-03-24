@@ -65,10 +65,10 @@ public class DHClient
     return status;
   }
 
-  public Report GetReport(String subject)
+  public Report GetLatestReport(String subject)
   {
     GetReportRequest request = GetReportRequest.newBuilder().setSubject(subject).build();
-    GetReportReply reply = blockingStub.getReport(request);
+    GetReportReply reply = blockingStub.getLatestReport(request);
     Report report = reply.getReport();
     logger.info("Result: " + report);
     return report;

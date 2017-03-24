@@ -16,8 +16,13 @@ public class App
           DHBuilder.NewMetric("cpu", Health.Status.UNHEALTHY, 30.0f),
           DHBuilder.NewMetric("memory", Health.Status.HEALTHY, 80.0f));
       client.SubmitReport("XFE_1", "TS_2", observation);
-      client.GetReport("TS_2");
-      client.GetReport("TS_3");
+
+      now = System.currentTimeMillis();
+      observation = DHBuilder.NewObservation(now,
+          DHBuilder.NewMetric("disk", Health.Status.UNHEALTHY, 20.0f));
+      client.SubmitReport("XFE_3", "TS_2", observation);
+      client.GetLatestReport("TS_2");
+      client.GetLatestReport("TS_3");
       System.out.println("Done!");
     }
 }
