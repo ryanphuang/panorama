@@ -86,7 +86,13 @@ public class DHClient
   {
     logger.info("Start observing " + subject);
     ObserveRequest request = ObserveRequest.newBuilder().setSubject(subject).build();
-    ObserveReply reply = blockingStub.observe(request);
+    ObserveReply reply;
+    try {
+      reply = blockingStub.observe(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("RCP failed: " + e.getStatus());
+      return false;
+    }
     boolean ok = reply.getSuccess();
     logger.info("Result: " + ok);
     return ok;
@@ -96,7 +102,13 @@ public class DHClient
   {
     logger.info("Stop observing " + subject);
     ObserveRequest request = ObserveRequest.newBuilder().setSubject(subject).build();
-    ObserveReply reply = blockingStub.stopObserving(request);
+    ObserveReply reply; 
+    try {
+      reply = blockingStub.stopObserving(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("RCP failed: " + e.getStatus());
+      return false;
+    }
     boolean ok = reply.getSuccess();
     logger.info("Result: " + ok);
     return ok;
@@ -117,7 +129,12 @@ public class DHClient
     SubmitReportRequest request = SubmitReportRequest.newBuilder().setReport(report)
       .build();
     SubmitReportReply reply; 
-    reply = blockingStub.submitReport(request);
+    try {
+      reply = blockingStub.submitReport(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("RCP failed: " + e.getStatus());
+      return null;
+    }
     SubmitReportReply.Status status = reply.getResult();
     logger.info("Result: " + status);
     return status;
@@ -127,7 +144,13 @@ public class DHClient
   {
     logger.info("Getting report for " + subject);
     GetReportRequest request = GetReportRequest.newBuilder().setSubject(subject).build();
-    GetReportReply reply = blockingStub.getLatestReport(request);
+    GetReportReply reply;
+    try {
+      reply = blockingStub.getLatestReport(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("RCP failed: " + e.getStatus());
+      return null;
+    }
     Report report = reply.getReport();
     logger.info("Result: " + report);
     return report;
