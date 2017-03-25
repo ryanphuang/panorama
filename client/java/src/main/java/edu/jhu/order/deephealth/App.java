@@ -10,17 +10,12 @@ public class App
       }
       String host = args[0];
       int port = Integer.parseInt(args[1]);
-      DHClient client = new DHClient(host, port);
-      long now = System.currentTimeMillis();
-      Health.Observation observation = DHBuilder.NewObservation(now,
+      DHClient client = new DHClient(host, port, "XFE_2016", false);
+      client.SubmitReport("TS_2", 
           DHBuilder.NewMetric("cpu", Health.Status.UNHEALTHY, 30.0f),
           DHBuilder.NewMetric("memory", Health.Status.HEALTHY, 80.0f));
-      client.SubmitReport("XFE_1", "TS_2", observation);
-
-      now = System.currentTimeMillis();
-      observation = DHBuilder.NewObservation(now,
+      client.SubmitReport("TS_2", 
           DHBuilder.NewMetric("disk", Health.Status.UNHEALTHY, 20.0f));
-      client.SubmitReport("XFE_3", "TS_2", observation);
       client.GetLatestReport("TS_2");
       client.GetLatestReport("TS_3");
       System.out.println("Done!");
