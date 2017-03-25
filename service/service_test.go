@@ -84,12 +84,12 @@ func TestMain(m *testing.M) {
 
 	var addr string
 
-	var config *dt.HealthServerConfig
+	var config *HealthServerConfig
 	if !*remote {
 		port := portstart + int(r.Intn(portend-portstart))
 		addr = fmt.Sprintf("localhost:%d", port)
 		subjects := []dt.EntityId{"TS_1", "TS_2", "TS_3", "TS_4"}
-		config = &dt.HealthServerConfig{
+		config = &HealthServerConfig{
 			Addr:     addr,
 			Owner:    "XFE_1",
 			Subjects: subjects,

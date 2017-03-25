@@ -14,40 +14,38 @@ const (
 )
 
 type HealthNServer struct {
-	Addr    string
-	Owner   dt.EntityId
-	Storage dt.HealthStorage
-	Done    chan bool
+	HealthServerConfig
 
+	storage  dt.HealthStorage
+	done     chan bool
 	alive    bool
 	listener net.Listener
 }
 
-func NewHealthNServer(config *dt.HealthServerConfig) *HealthNServer {
+func NewHealthNServer(config *HealthServerConfig) *HealthNServer {
 	hs := new(HealthNServer)
-	hs.Addr = config.Addr
-	hs.Owner = config.Owner
+	hs.HealthServerConfig = *config
 
 	storage := store.NewRawHealthStorage(config.Subjects...)
-	hs.Storage = storage
-	hs.Done = make(chan bool)
+	hs.storage = storage
+	hs.done = make(chan bool)
 	hs.alive = true
 	return hs
 }
 
 func (hs *HealthNServer) Observe(subject dt.EntityId, reply *bool) error {
-	*reply = hs.Storage.AddSubject(subject)
+	*reply = hs.storage.AddSubject(subject)
 	return nil
 }
 
 func (hs *HealthNServer) StopObserving(subject dt.EntityId, reply *bool) error {
-	*reply = hs.Storage.RemoveSubject(subject, true)
+	*reply = hs.storage.RemoveSubject(subject, true)
 	return nil
 }
 
 func (hs *HealthNServer) SubmitReport(report *dt.Report, reply *int) error {
 	var err error
-	*reply, err = hs.Storage.AddReport(report)
+	*reply, err = hs.storage.AddReport(report, hs.FilterSubmission)
 	return err
 }
 
@@ -90,5 +88,9 @@ func (hs *HealthNServer) Start() error {
 func (hs *HealthNServer) Stop() {
 	hs.alive = false
 	hs.listener.Close()
-	hs.Done <- true
+	hs.done <- true
+}
+
+func (hs *HealthNServer) WaitForDone() {
+	<-hs.done
 }

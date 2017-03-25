@@ -9,7 +9,7 @@ type HealthStorage interface {
 	RemoveSubject(subject EntityId, clean bool) bool
 
 	// Add a report to the view storage
-	AddReport(report *Report) (int, error)
+	AddReport(report *Report, filter bool) (int, error)
 
 	// Get the latest report for a subject
 	GetLatestReport(subject EntityId) *Report
@@ -26,10 +26,4 @@ type HealthGossip interface {
 type HealthStatus interface {
 	// Query the health status of an entity
 	GetReport(subject EntityId) *Report
-}
-
-type HealthServerConfig struct {
-	Addr     string
-	Owner    EntityId
-	Subjects []EntityId
 }

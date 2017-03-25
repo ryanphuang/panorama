@@ -14,21 +14,17 @@ import (
 )
 
 type HealthGServer struct {
-	Addr    string
-	Owner   dt.EntityId
-	Storage dt.HealthStorage
-
-	l net.Listener
-	s *grpc.Server
+	HealthServerConfig
+	storage dt.HealthStorage
+	l       net.Listener
+	s       *grpc.Server
 }
 
-func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
+func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
 	gs := new(HealthGServer)
-	gs.Addr = config.Addr
-	gs.Owner = config.Owner
-
+	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
-	gs.Storage = storage
+	gs.storage = storage
 	return gs
 }
 
@@ -75,7 +71,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		return &pb.SubmitReportReply{Result: pb.SubmitReportReply_FAILED}, fmt.Errorf("Fail to parse report")
 	}
 	var result pb.SubmitReportReply_Status
-	rc, err := self.Storage.AddReport(report)
+	rc, err := self.storage.AddReport(report, self.FilterSubmission)
 	switch rc {
 	case store.REPORT_IGNORED:
 		result = pb.SubmitReportReply_IGNORED
@@ -88,16 +84,16 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 }
 
 func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
-	report := self.Storage.GetLatestReport(dt.EntityId(in.Subject))
+	report := self.storage.GetLatestReport(dt.EntityId(in.Subject))
 	return &pb.GetReportReply{Report: dt.ReportToPb(report)}, nil
 }
 
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	ok := self.Storage.AddSubject(dt.EntityId(in.Subject))
+	ok := self.storage.AddSubject(dt.EntityId(in.Subject))
 	return &pb.ObserveReply{Success: ok}, nil
 }
 
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	ok := self.Storage.RemoveSubject(dt.EntityId(in.Subject), true)
+	ok := self.storage.RemoveSubject(dt.EntityId(in.Subject), true)
 	return &pb.ObserveReply{Success: ok}, nil
 }

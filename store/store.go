@@ -67,12 +67,16 @@ func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) boo
 	return ok
 }
 
-func (self *RawHealthStorage) AddReport(report *dt.Report) (int, error) {
+func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, error) {
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
-		// subject is not in our watch list, ignore the report
-		dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
-		return REPORT_IGNORED, nil
+		if filter {
+			// subject is not in our watch list, ignore the report
+			dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
+			return REPORT_IGNORED, nil
+		} else {
+			self.Watchlist[report.Subject] = true
+		}
 	}
 	dh.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
 	self.mu.Lock()
