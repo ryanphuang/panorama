@@ -9,15 +9,18 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	pb "deephealth/build/gen"
+	"deephealth/decision"
 	"deephealth/store"
 	dt "deephealth/types"
 )
 
 type HealthGServer struct {
 	HealthServerConfig
-	storage dt.HealthStorage
-	l       net.Listener
-	s       *grpc.Server
+	storage   dt.HealthStorage
+	inference dt.HealthInference
+	gossip    dt.HealthGossip
+	l         net.Listener
+	s         *grpc.Server
 }
 
 func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
@@ -25,6 +28,8 @@ func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
 	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
 	gs.storage = storage
+	var majority decision.SimpleMajorityInference
+	gs.inference = store.NewHealthInferenceStorage(storage, majority)
 	return gs
 }
 

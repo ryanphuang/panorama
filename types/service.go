@@ -22,12 +22,15 @@ type HealthStorage interface {
 	GetPanorama(subject EntityId) (*Panorama, *sync.Mutex)
 }
 
+type HealthInference interface {
+	// Infer the health of a subject
+	Infer(subject EntityId) (*Inference, error)
+
+	// Get the health inference of a subject
+	GetInference(subject EntityId) *Inference
+}
+
 type HealthGossip interface {
 	// Gossip a report to other peers
 	GossipReport(report *Report) int
-}
-
-type HealthStatus interface {
-	// Query the health status of an entity
-	GetReport(subject EntityId) *Report
 }
