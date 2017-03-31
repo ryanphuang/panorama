@@ -52,12 +52,16 @@ func NewRawHealthStorage(subjects ...dt.EntityId) *RawHealthStorage {
 var _ dt.HealthStorage = new(RawHealthStorage)
 
 func (self *RawHealthStorage) AddSubject(subject dt.EntityId) bool {
+	self.mu.Lock()
 	_, ok := self.Watchlist[subject]
 	self.Watchlist[subject] = true
+	self.mu.Lock()
 	return !ok
 }
 
 func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) bool {
+	self.mu.Lock()
+	defer self.mu.Lock()
 	_, ok := self.Watchlist[subject]
 	delete(self.Watchlist, subject)
 	if clean {
@@ -68,26 +72,24 @@ func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) boo
 }
 
 func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, error) {
+	self.mu.Lock()
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
 		if filter {
 			// subject is not in our watch list, ignore the report
 			dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
+			self.mu.Unlock()
 			return REPORT_IGNORED, nil
 		} else {
 			self.Watchlist[report.Subject] = true
 		}
 	}
 	dh.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
-	self.mu.Lock()
 	l, ok := self.Locks[report.Subject]
 	if !ok {
 		l = new(sync.Mutex)
 		self.Locks[report.Subject] = l
 	}
-	self.mu.Unlock()
-	l.Lock()
-	defer l.Unlock()
 	panorama, ok := self.Tenants[report.Subject]
 	if !ok {
 		panorama = &dt.Panorama{
@@ -96,6 +98,9 @@ func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, er
 		}
 		self.Tenants[report.Subject] = panorama
 	}
+	self.mu.Unlock()
+	l.Lock()
+	defer l.Unlock()
 	view, ok := panorama.Views[report.Observer]
 	if !ok {
 		view = &dt.View{
@@ -113,6 +118,22 @@ func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, er
 		view.Observations.Remove(view.Observations.Front())
 	}
 	return REPORT_ACCEPTED, nil
+}
+
+func (self *RawHealthStorage) GetPanorama(subject dt.EntityId) (*dt.Panorama, *sync.Mutex) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	_, ok := self.Watchlist[subject]
+	if ok {
+		l, ok := self.Locks[subject]
+		if ok {
+			panorama, ok := self.Tenants[subject]
+			if ok {
+				return panorama, l
+			}
+		}
+	}
+	return nil, nil
 }
 
 func (self *RawHealthStorage) GetLatestReport(subject dt.EntityId) *dt.Report {

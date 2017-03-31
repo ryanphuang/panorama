@@ -57,6 +57,14 @@ type Panorama struct {
 	Views   map[EntityId]*View // various observers' reports about the subject
 }
 
+// An inference is a final summary of a entity's health based on the observations
+// from different entities
+type Inference struct {
+	Subject     EntityId    // the entity whose health information is stored
+	Observers   []EntityId  // the set of entities from whom the status was computed from
+	Observation Observation // the observation that reflects an entity's health
+}
+
 func (self *Observation) SetMetric(name string, status Status, score float32) bool {
 	metric, ok := self.Metrics[name]
 	if !ok {

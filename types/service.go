@@ -1,5 +1,9 @@
 package types
 
+import (
+	"sync"
+)
+
 type HealthStorage interface {
 	// Add a subject to the observing subject list
 	AddSubject(subject EntityId) bool
@@ -13,9 +17,9 @@ type HealthStorage interface {
 
 	// Get the latest report for a subject
 	GetLatestReport(subject EntityId) *Report
-}
 
-type SummaryTable interface {
+	// Get the whole panorama for a subject
+	GetPanorama(subject EntityId) (*Panorama, *sync.Mutex)
 }
 
 type HealthGossip interface {
