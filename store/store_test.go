@@ -15,7 +15,7 @@ func TestAddSubject(t *testing.T) {
 	store := NewRawHealthStorage("TS_1", "TS_2")
 	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_3", metrics)
-	result, err := store.AddReport(report)
+	result, err := store.AddReport(report, true)
 	if err != nil {
 		t.Errorf("Fail to add report %s", report)
 	}
@@ -23,7 +23,7 @@ func TestAddSubject(t *testing.T) {
 		t.Errorf("Report %s should get ignored", report)
 	}
 	store.AddSubject("TS_3")
-	result, err = store.AddReport(report)
+	result, err = store.AddReport(report, true)
 	if err != nil {
 		t.Errorf("Fail to add report %s", report)
 	}
@@ -55,7 +55,7 @@ func TestAddReport(t *testing.T) {
 		report := dt.NewReport(observer, subject, metrics)
 		wg.Add(1)
 		go func() {
-			result, err := store.AddReport(report)
+			result, err := store.AddReport(report, true)
 			if err != nil {
 				t.Errorf("Fail to add report %s", report)
 			}
@@ -89,16 +89,16 @@ func TestRecentReport(t *testing.T) {
 
 	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 90}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 70}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 	metrics = map[string]dt.Value{"cpu": dt.Value{dt.UNHEALTHY, 30}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 
 	ret := store.GetLatestReport("TS_1")
 	if ret.Observer != "FE_2" {
@@ -115,7 +115,7 @@ func TestRecentReport(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	metrics = map[string]dt.Value{"memory": dt.Value{dt.UNHEALTHY, 20}}
 	report = dt.NewReport("FE_4", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 	ret = store.GetLatestReport("TS_1")
 	if ret.Observer != "FE_4" {
 		t.Errorf("Wrong subject in the latest report: %s\n", *ret)
@@ -131,10 +131,10 @@ func TestRecentReport(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	metrics = map[string]dt.Value{"network": dt.Value{dt.HEALTHY, 80}}
 	report = dt.NewReport("FE_5", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 	metrics = map[string]dt.Value{"memory": dt.Value{dt.HEALTHY, 70}}
 	report = dt.NewReport("FE_1", "TS_1", metrics)
-	store.AddReport(report)
+	store.AddReport(report, true)
 	ret = store.GetLatestReport("TS_1")
 	if ret.Observer != "FE_1" {
 		t.Errorf("Wrong subject in the latest report: %s\n", *ret)

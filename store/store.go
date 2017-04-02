@@ -55,13 +55,13 @@ func (self *RawHealthStorage) AddSubject(subject dt.EntityId) bool {
 	self.mu.Lock()
 	_, ok := self.Watchlist[subject]
 	self.Watchlist[subject] = true
-	self.mu.Lock()
+	self.mu.Unlock()
 	return !ok
 }
 
 func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) bool {
 	self.mu.Lock()
-	defer self.mu.Lock()
+	defer self.mu.Unlock()
 	_, ok := self.Watchlist[subject]
 	delete(self.Watchlist, subject)
 	if clean {
