@@ -1,3 +1,4 @@
 *.swp
 build/
 target/
+hs.cfg
