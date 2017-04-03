@@ -17,8 +17,16 @@ service HealthService {
 	// Submit a report to the view storage
   rpc SubmitReport(SubmitReportRequest) returns (SubmitReportReply) {}
 
+	// Learn a report from a peer 
+  rpc LearnReport(LearnReportRequest) returns (LearnReportReply) {}
+
 	// Query the latest health report of an entity
   rpc GetLatestReport(GetReportRequest) returns (GetReportReply) {}
+}
+
+message Peer {
+  string id = 1;
+  string addr = 2;
 }
 
 message ObserveRequest {
@@ -27,6 +35,20 @@ message ObserveRequest {
 
 message ObserveReply {
   bool success = 1;
+}
+
+message LearnReportRequest {
+  Peer source = 1;
+  Report report = 2;
+}
+
+message LearnReportReply {
+  enum Status {
+    IGNORED = 0;
+    ACCEPTED = 1;
+    FAILED = 2;
+  }
+  Status result = 1;
 }
 
 message SubmitReportRequest {

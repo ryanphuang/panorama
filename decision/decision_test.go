@@ -8,5 +8,5 @@ import (
 	dt "deephealth/types"
 )
 
-func TestInferView(t *testing.T) {
+func TestInferPano(t *testing.T) {
 }

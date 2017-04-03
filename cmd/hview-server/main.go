@@ -43,7 +43,7 @@ func main() {
 	for i := 1; i <= 100; i++ {
 		subjects[i-1] = dt.EntityId(fmt.Sprintf("TS_%d", i))
 	}
-	config := &service.HealthServerConfig{
+	config := &dt.HealthServerConfig{
 		Addr:     faddr,
 		Owner:    dt.EntityId(args[0]),
 		Subjects: subjects,

@@ -11,6 +11,7 @@ import (
 	dh "deephealth"
 	pb "deephealth/build/gen"
 	"deephealth/decision"
+	"deephealth/exchange"
 	"deephealth/store"
 	dt "deephealth/types"
 )
@@ -20,17 +21,17 @@ const (
 )
 
 type HealthGServer struct {
-	HealthServerConfig
+	dt.HealthServerConfig
 	storage   dt.HealthStorage
 	inference dt.HealthInference
-	gossip    dt.HealthGossip
+	exchange  dt.HealthExchange
 
 	rch chan *dt.Report
 	l   net.Listener
 	s   *grpc.Server
 }
 
-func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
+func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs := new(HealthGServer)
 	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
@@ -38,6 +39,7 @@ func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs
+	gs.exchange = exchange.NewExchangeProtocol(config)
 	gs.rch = infs.ReportCh
 	return gs
 }
@@ -96,15 +98,29 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
 	}
-	go func(report *dt.Report) {
-		select {
-		case self.rch <- report:
-			dh.LogD(stag, "send report for %s for inference", report.Subject)
-		default:
-			dh.LogD(stag, "fail to send report for %s for inference", report.Subject)
-		}
-	}(report)
+	go self.AnalyzeReport(report)
+	go self.exchange.Propagate(report)
 	return &pb.SubmitReportReply{Result: result}, err
+}
+
+func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRequest) (*pb.LearnReportReply, error) {
+	report := dt.ReportFromPb(in.Report)
+	if report == nil {
+		return &pb.LearnReportReply{Result: pb.LearnReportReply_FAILED}, fmt.Errorf("Fail to parse report")
+	}
+	dh.LogD(stag, "learn report about %s from %s at %s", report.Subject, in.Source.Id, in.Source.Addr)
+	var result pb.LearnReportReply_Status
+	rc, err := self.storage.AddReport(report, self.FilterSubmission)
+	switch rc {
+	case store.REPORT_IGNORED:
+		result = pb.LearnReportReply_IGNORED
+	case store.REPORT_FAILED:
+		result = pb.LearnReportReply_FAILED
+	case store.REPORT_ACCEPTED:
+		result = pb.LearnReportReply_ACCEPTED
+	}
+	go self.AnalyzeReport(report)
+	return &pb.LearnReportReply{Result: result}, err
 }
 
 func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
@@ -120,4 +136,17 @@ func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.RemoveSubject(dt.EntityId(in.Subject), true)
 	return &pb.ObserveReply{Success: ok}, nil
+}
+
+func (self *HealthGServer) AnalyzeReport(report *dt.Report) {
+	self.rch <- report
+	dh.LogD(stag, "sent report for %s for inference", report.Subject)
+	/*
+		select {
+		case self.rch <- report:
+			dh.LogD(stag, "send report for %s for inference", report.Subject)
+		default:
+			dh.LogD(stag, "fail to send report for %s for inference", report.Subject)
+		}
+	*/
 }

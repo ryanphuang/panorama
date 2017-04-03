@@ -14,7 +14,7 @@ const (
 )
 
 type HealthNServer struct {
-	HealthServerConfig
+	dt.HealthServerConfig
 
 	storage  dt.HealthStorage
 	done     chan bool
@@ -22,7 +22,7 @@ type HealthNServer struct {
 	listener net.Listener
 }
 
-func NewHealthNServer(config *HealthServerConfig) *HealthNServer {
+func NewHealthNServer(config *dt.HealthServerConfig) *HealthNServer {
 	hs := new(HealthNServer)
 	hs.HealthServerConfig = *config
 

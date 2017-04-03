@@ -39,7 +39,7 @@ type HealthInference interface {
 	Stop() error
 }
 
-type HealthGossip interface {
-	// Gossip a report to other peers
-	GossipReport(report *Report) int
+type HealthExchange interface {
+	// Propagate a report to other peers
+	Propagate(report *Report) error
 }
