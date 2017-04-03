@@ -8,10 +8,15 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	dh "deephealth"
 	pb "deephealth/build/gen"
 	"deephealth/decision"
 	"deephealth/store"
 	dt "deephealth/types"
+)
+
+const (
+	stag = "service"
 )
 
 type HealthGServer struct {
@@ -19,8 +24,10 @@ type HealthGServer struct {
 	storage   dt.HealthStorage
 	inference dt.HealthInference
 	gossip    dt.HealthGossip
-	l         net.Listener
-	s         *grpc.Server
+
+	rch chan *dt.Report
+	l   net.Listener
+	s   *grpc.Server
 }
 
 func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
@@ -29,7 +36,9 @@ func NewHealthGServer(config *HealthServerConfig) *HealthGServer {
 	storage := store.NewRawHealthStorage(config.Subjects...)
 	gs.storage = storage
 	var majority decision.SimpleMajorityInference
-	gs.inference = store.NewHealthInferenceStorage(storage, majority)
+	infs := store.NewHealthInferenceStorage(storage, majority)
+	gs.inference = infs
+	gs.rch = infs.ReportCh
 	return gs
 }
 
@@ -53,6 +62,7 @@ func (self *HealthGServer) Start(errch chan error) error {
 			}
 		}
 	}()
+	self.inference.Start()
 	return nil
 }
 
@@ -67,6 +77,7 @@ func (self *HealthGServer) Stop(graceful bool) error {
 	}
 	self.s = nil
 	self.l = nil
+	self.inference.Stop()
 	return nil
 }
 
@@ -85,6 +96,14 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
 	}
+	go func(report *dt.Report) {
+		select {
+		case self.rch <- report:
+			dh.LogD(stag, "send report for %s for inference", report.Subject)
+		default:
+			dh.LogD(stag, "fail to send report for %s for inference", report.Subject)
+		}
+	}(report)
 	return &pb.SubmitReportReply{Result: result}, err
 }
 

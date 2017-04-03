@@ -28,6 +28,12 @@ type HealthInference interface {
 
 	// Get the health inference of a subject
 	GetInference(subject EntityId) *Inference
+
+	// Start the inference service
+	Start() error
+
+	// Stop the inference service
+	Stop() error
 }
 
 type HealthGossip interface {
