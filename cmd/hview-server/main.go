@@ -13,6 +13,7 @@ import (
 )
 
 var (
+	rc        = flag.String("config", "", "use config file to initialize service")
 	addr      = flag.String("addr", "localhost", "server listen address")
 	grpc      = flag.Bool("grpc", true, "use grpc service implementation")
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
@@ -28,26 +29,35 @@ func main() {
 	}
 
 	flag.Parse()
-	faddr := *addr
-	if !strings.ContainsAny(*addr, ":") {
-		port := *portstart + int(r.Intn(*portend-*portstart))
-		faddr = fmt.Sprintf("%s:%d", faddr, port)
+	var config *dt.HealthServerConfig
+	var err error
+	if len(*rc) > 0 {
+		config, err = dt.LoadConfig(*rc)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		faddr := *addr
+		if !strings.ContainsAny(*addr, ":") {
+			port := *portstart + int(r.Intn(*portend-*portstart))
+			faddr = fmt.Sprintf("%s:%d", faddr, port)
+		}
+		args := flag.Args()
+		if len(args) != 1 {
+			flag.Usage()
+			os.Exit(1)
+		}
+		subjects := make([]dt.EntityId, 100)
+		for i := 1; i <= 100; i++ {
+			subjects[i-1] = dt.EntityId(fmt.Sprintf("TS_%d", i))
+		}
+		config = &dt.HealthServerConfig{
+			Addr:     faddr,
+			Owner:    dt.EntityId(args[0]),
+			Subjects: subjects,
+		}
 	}
-	args := flag.Args()
-	if len(args) != 1 {
-		flag.Usage()
-		os.Exit(1)
-	}
-	fmt.Printf("Starting health service at %s\n", faddr)
-	subjects := make([]dt.EntityId, 100)
-	for i := 1; i <= 100; i++ {
-		subjects[i-1] = dt.EntityId(fmt.Sprintf("TS_%d", i))
-	}
-	config := &dt.HealthServerConfig{
-		Addr:     faddr,
-		Owner:    dt.EntityId(args[0]),
-		Subjects: subjects,
-	}
+	fmt.Printf("Starting health service at %s with config %s\n", config.Addr, config)
 	if *grpc {
 		gs := service.NewHealthGServer(config)
 		errch := make(chan error)
