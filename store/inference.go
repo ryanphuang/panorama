@@ -13,9 +13,12 @@ const (
 	itag = "inference"
 )
 
+type InferMap map[dt.EntityId]*dt.Inference
+
 type HealthInferenceStorage struct {
-	Tenants  map[dt.EntityId]*dt.Inference
-	ReportCh chan *dt.Report
+	Results   InferMap
+	Workbooks map[dt.EntityId]InferMap
+	ReportCh  chan *dt.Report
 
 	raw   *RawHealthStorage
 	algo  dd.InferenceAlgo
@@ -25,37 +28,43 @@ type HealthInferenceStorage struct {
 
 func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *HealthInferenceStorage {
 	storage := &HealthInferenceStorage{
-		Tenants:  make(map[dt.EntityId]*dt.Inference),
-		ReportCh: make(chan *dt.Report, 10),
-		raw:      raw,
-		algo:     algo,
-		mu:       &sync.Mutex{},
-		alive:    true,
+		Results:   make(InferMap),
+		Workbooks: make(map[dt.EntityId]InferMap),
+		ReportCh:  make(chan *dt.Report, 10),
+		raw:       raw,
+		algo:      algo,
+		mu:        &sync.Mutex{},
+		alive:     true,
 	}
 	return storage
 }
 
 func (self *HealthInferenceStorage) Infer(report *dt.Report) (*dt.Inference, error) {
-	view, l := self.raw.GetView(report.Observer, report.Subject)
-	if view == nil || l == nil {
-		return nil, fmt.Errorf("cannot get view for %s\n", report.Subject)
+	panorama, l := self.raw.GetPanorama(report.Subject)
+	if panorama == nil || l == nil {
+		return nil, fmt.Errorf("cannot get panorama for %s\n", report.Subject)
 	}
 	l.Lock()
-	inference := self.algo.InferView(view)
+	workbook, ok := self.Workbooks[report.Subject]
+	if !ok {
+		workbook = make(InferMap)
+		self.Workbooks[report.Subject] = workbook
+	}
+	inference := self.algo.InferPano(panorama, workbook)
 	l.Unlock()
 	if inference == nil {
 		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}
-	dh.LogD(itag, "inference result for %s: %v", report.Subject, *inference.Observation)
+	dh.LogD(itag, "inference result for %s: %s", report.Subject, *inference.Observation)
 	self.mu.Lock()
-	self.Tenants[report.Subject] = inference
+	self.Results[report.Subject] = inference
 	self.mu.Unlock()
 	return inference, nil
 }
 
 func (self *HealthInferenceStorage) GetInference(subject dt.EntityId) *dt.Inference {
 	self.mu.Lock()
-	inference := self.Tenants[subject]
+	inference := self.Results[subject]
 	self.mu.Unlock()
 	return inference
 }

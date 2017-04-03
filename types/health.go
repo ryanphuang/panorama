@@ -28,6 +28,7 @@ type Metric struct {
 	Value
 }
 
+type Values []*Value
 type Metrics map[string]*Metric
 
 // An observation is a collection of a metrics measuring
