@@ -39,9 +39,9 @@ type Observation struct {
 
 // A report is an observation attached with the observer and the observed (subject)
 type Report struct {
-	Observer    EntityId    // the entity that made the report
-	Subject     EntityId    // the entity whose health is being reported by the observer
-	Observation Observation // the observation that reflects an entity's health
+	Observer    EntityId     // the entity that made the report
+	Subject     EntityId     // the entity whose health is being reported by the observer
+	Observation *Observation // the observation that reflects an entity's health
 }
 
 // A view is a continuous stream of reports made by an observer for a subject
@@ -60,9 +60,9 @@ type Panorama struct {
 // An inference is a final summary of a entity's health based on the observations
 // from different entities
 type Inference struct {
-	Subject     EntityId    // the entity whose health information is stored
-	Observers   []EntityId  // the set of entities from whom the status was computed from
-	Observation Observation // the observation that reflects an entity's health
+	Subject     EntityId     // the entity whose health information is stored
+	Observers   []EntityId   // the set of entities from whom the status was computed from
+	Observation *Observation // the observation that reflects an entity's health
 }
 
 func (self *Observation) SetMetric(name string, status Status, score float32) bool {
@@ -110,6 +110,6 @@ func NewReport(observer EntityId, subject EntityId, metrics map[string]Value) *R
 	return &Report{
 		Observer:    observer,
 		Subject:     subject,
-		Observation: *o,
+		Observation: o,
 	}
 }

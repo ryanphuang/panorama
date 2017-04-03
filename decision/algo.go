@@ -5,5 +5,6 @@ import (
 )
 
 type InferenceAlgo interface {
-	Infer(panorama *dt.Panorama) *dt.Inference
+	InferPano(panorama *dt.Panorama) *dt.Inference
+	InferView(view *dt.View) *dt.Inference
 }

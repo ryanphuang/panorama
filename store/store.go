@@ -111,7 +111,7 @@ func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, er
 		panorama.Views[report.Observer] = view
 		dh.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
-	view.Observations.PushBack(&report.Observation)
+	view.Observations.PushBack(report.Observation)
 	dh.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, report.Observation)
 	if view.Observations.Len() > MaxReportPerView {
 		dh.LogD(tag, "truncating list")
@@ -130,6 +130,25 @@ func (self *RawHealthStorage) GetPanorama(subject dt.EntityId) (*dt.Panorama, *s
 			panorama, ok := self.Tenants[subject]
 			if ok {
 				return panorama, l
+			}
+		}
+	}
+	return nil, nil
+}
+
+func (self *RawHealthStorage) GetView(observer dt.EntityId, subject dt.EntityId) (*dt.View, *sync.Mutex) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	_, ok := self.Watchlist[subject]
+	if ok {
+		l, ok := self.Locks[subject]
+		if ok {
+			panorama, ok := self.Tenants[subject]
+			if ok {
+				view, ok := panorama.Views[observer]
+				if ok {
+					return view, l
+				}
 			}
 		}
 	}
@@ -169,7 +188,7 @@ func (self *RawHealthStorage) GetLatestReport(subject dt.EntityId) *dt.Report {
 	return &dt.Report{
 		Observer:    who,
 		Subject:     subject,
-		Observation: *recent_ob,
+		Observation: recent_ob,
 	}
 }
 

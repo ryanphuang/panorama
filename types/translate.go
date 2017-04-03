@@ -90,7 +90,7 @@ func ReportToPb(in *Report) *pb.Report {
 	if in == nil {
 		return nil
 	}
-	observation := ObservationToPb(&in.Observation)
+	observation := ObservationToPb(in.Observation)
 	if observation == nil {
 		return nil
 	}
@@ -129,6 +129,6 @@ func ReportFromPb(in *pb.Report) *Report {
 	return &Report{
 		Observer:    EntityId(in.Observer),
 		Subject:     EntityId(in.Subject),
-		Observation: *observation,
+		Observation: observation,
 	}
 }

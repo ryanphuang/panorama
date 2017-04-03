@@ -20,11 +20,14 @@ type HealthStorage interface {
 
 	// Get the whole panorama for a subject
 	GetPanorama(subject EntityId) (*Panorama, *sync.Mutex)
+
+	// Get the view from an observer about a subject
+	GetView(observer EntityId, subject EntityId) (*View, *sync.Mutex)
 }
 
 type HealthInference interface {
-	// Infer the health of a subject
-	Infer(subject EntityId) (*Inference, error)
+	// Infer the health of a subject given a new report
+	Infer(report *Report) (*Inference, error)
 
 	// Get the health inference of a subject
 	GetInference(subject EntityId) *Inference

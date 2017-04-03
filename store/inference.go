@@ -35,19 +35,20 @@ func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *He
 	return storage
 }
 
-func (self *HealthInferenceStorage) Infer(subject dt.EntityId) (*dt.Inference, error) {
-	panorama, l := self.raw.GetPanorama(subject)
-	if panorama == nil || l == nil {
-		return nil, fmt.Errorf("cannot get panorama for %s\n", subject)
+func (self *HealthInferenceStorage) Infer(report *dt.Report) (*dt.Inference, error) {
+	view, l := self.raw.GetView(report.Observer, report.Subject)
+	if view == nil || l == nil {
+		return nil, fmt.Errorf("cannot get view for %s\n", report.Subject)
 	}
 	l.Lock()
-	inference := self.algo.Infer(panorama)
+	inference := self.algo.InferView(view)
 	l.Unlock()
 	if inference == nil {
-		return nil, fmt.Errorf("could not compute inference for %s\n", subject)
+		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}
+	dh.LogD(itag, "inference result for %s: %v", report.Subject, *inference.Observation)
 	self.mu.Lock()
-	self.Tenants[subject] = inference
+	self.Tenants[report.Subject] = inference
 	self.mu.Unlock()
 	return inference, nil
 }
@@ -65,6 +66,7 @@ func (self *HealthInferenceStorage) Start() error {
 			select {
 			case report := <-self.ReportCh:
 				dh.LogD(itag, "received report for %s for inference", report.Subject)
+				self.Infer(report)
 			}
 		}
 	}()

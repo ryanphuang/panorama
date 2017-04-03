@@ -77,7 +77,7 @@ func parseReport(args []string) *dt.Report {
 	return &dt.Report{
 		Observer:    observer,
 		Subject:     subject,
-		Observation: *observation,
+		Observation: observation,
 	}
 }
 
