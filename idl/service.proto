@@ -3,6 +3,8 @@ option java_package = "edu.jhu.order.deephealth";
 
 package idl;
 
+import "google/protobuf/timestamp.proto";
+
 import "health.proto";
 
 // Definition for the health service
@@ -22,6 +24,9 @@ service HealthService {
 
 	// Query the latest health report of an entity
   rpc GetLatestReport(GetReportRequest) returns (GetReportReply) {}
+
+  // ping request to test liveness of a health server
+  rpc Ping(PingRequest) returns (PingReply) {}
 }
 
 message Peer {
@@ -70,4 +75,18 @@ message GetReportRequest {
 
 message GetReportReply {
   Report report = 1;
+}
+
+message PingRequest {
+  Peer source = 1;
+  google.protobuf.Timestamp time = 2; 
+}
+
+message PingReply {
+  enum Status {
+    GOOD = 0;
+    BAD = 1;
+  }
+  Status result = 1;
+  google.protobuf.Timestamp time = 2; 
 }

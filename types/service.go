@@ -2,6 +2,7 @@ package types
 
 import (
 	"sync"
+	"time"
 )
 
 type HealthStorage interface {
@@ -39,7 +40,17 @@ type HealthInference interface {
 	Stop() error
 }
 
+type PingReply struct {
+	Ts time.Time
+}
+
 type HealthExchange interface {
 	// Propagate a report to other peers
 	Propagate(report *Report) error
+
+	// Ping one peer and get a response
+	Ping(peer EntityId) (*PingReply, error)
+
+	// Ping all peers and get response
+	PingAll() (map[EntityId]*PingReply, error)
 }

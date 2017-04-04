@@ -2,6 +2,9 @@ package exchange
 
 import (
 	"sync"
+	"time"
+
+	"github.com/golang/protobuf/ptypes"
 
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -87,6 +90,43 @@ func (self *ExchangeProtocol) Propagate(report *dt.Report) error {
 		}
 	}
 	return ferr
+}
+
+func (self *ExchangeProtocol) Ping(peer dt.EntityId) (*dt.PingReply, error) {
+	client, err := self.getOrMakeClient(peer)
+	if err != nil {
+		return nil, err
+	}
+	now, err := ptypes.TimestampProto(time.Now())
+	if err != nil {
+		return nil, err
+	}
+	request := &pb.PingRequest{Source: self.me, Time: now}
+	dh.LogD(etag, "ping %s at %s", peer, now)
+	reply, err := client.Ping(context.Background(), request)
+	if err != nil {
+		return nil, err
+	}
+	t, err := ptypes.Timestamp(reply.Time)
+	if err != nil {
+		return nil, err
+	}
+	dh.LogD(etag, "got ping reply from %s at %s", peer, t)
+	return &dt.PingReply{t}, nil
+}
+
+func (self *ExchangeProtocol) PingAll() (map[dt.EntityId]*dt.PingReply, error) {
+	var ferr error
+	result := make(map[dt.EntityId]*dt.PingReply)
+	for peer, _ := range self.Peers {
+		reply, err := self.Ping(peer)
+		if err != nil {
+			ferr = err
+			continue
+		}
+		result[peer] = reply
+	}
+	return result, ferr
 }
 
 func (self *ExchangeProtocol) getOrMakeClient(peer dt.EntityId) (pb.HealthServiceClient, error) {

@@ -3,7 +3,9 @@ package service
 import (
 	"fmt"
 	"net"
+	"time"
 
+	"github.com/golang/protobuf/ptypes"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -65,6 +67,7 @@ func (self *HealthGServer) Start(errch chan error) error {
 		}
 	}()
 	self.inference.Start()
+	self.exchange.PingAll()
 	return nil
 }
 
@@ -136,6 +139,20 @@ func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.RemoveSubject(dt.EntityId(in.Subject), true)
 	return &pb.ObserveReply{Success: ok}, nil
+}
+
+func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
+	ts, err := ptypes.Timestamp(in.Time)
+	if err != nil {
+		return nil, err
+	}
+	dh.LogD(stag, "got ping request from %s at time %s", in.Source.Id, ts)
+	now := time.Now()
+	nowt, err := ptypes.TimestampProto(now)
+	if err != nil {
+		return nil, err
+	}
+	return &pb.PingReply{Result: pb.PingReply_GOOD, Time: nowt}, nil
 }
 
 func (self *HealthGServer) AnalyzeReport(report *dt.Report) {
