@@ -53,4 +53,10 @@ type HealthExchange interface {
 
 	// Ping all peers and get response
 	PingAll() (map[EntityId]*PingReply, error)
+
+	// peer is interested in a particular subject
+	Interested(peer EntityId, subject EntityId) bool
+
+	// peer is not interested in a particular subject
+	Uninterested(peer EntityId, subject EntityId) bool
 }

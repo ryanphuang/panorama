@@ -133,6 +133,34 @@ func (self *ExchangeProtocol) PingAll() (map[dt.EntityId]*dt.PingReply, error) {
 	return result, ferr
 }
 
+func (self *ExchangeProtocol) Interested(peer dt.EntityId, subject dt.EntityId) bool {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	ignoreset, ok := self.SkipSubjectPeers[subject]
+	if !ok { // no ignoreset yet, great
+		return false
+	}
+	_, ok = ignoreset[peer]
+	delete(ignoreset, peer) // remove peer from the ignoreset
+	if ok {
+		dh.LogD(etag, "removing %s from the ignoreset of peer %s", subject, peer)
+	}
+	return true
+}
+
+func (self *ExchangeProtocol) Uninterested(peer dt.EntityId, subject dt.EntityId) bool {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	ignoreset, ok := self.SkipSubjectPeers[subject]
+	if !ok {
+		ignoreset = make(IgnoreSet)
+		self.SkipSubjectPeers[subject] = ignoreset
+	}
+	ignoreset[peer] = true
+	dh.LogD(etag, "stop notifying %s about health of %s in the future", peer, subject)
+	return true
+}
+
 func (self *ExchangeProtocol) getOrMakeClient(peer dt.EntityId) (pb.HealthServiceClient, error) {
 	client, ok := self.Clients[peer]
 	if ok {
