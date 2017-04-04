@@ -91,7 +91,7 @@ func TestMain(m *testing.M) {
 		subjects := []dt.EntityId{"TS_1", "TS_2", "TS_3", "TS_4"}
 		config = &dt.HealthServerConfig{
 			Addr:     addr,
-			Owner:    "XFE_1",
+			Id:       "XFE_1",
 			Subjects: subjects,
 		}
 		dh.SetLogLevel(dh.ErrorLevel)

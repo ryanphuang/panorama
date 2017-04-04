@@ -34,12 +34,12 @@ var _ dt.HealthExchange = new(ExchangeProtocol)
 
 func NewExchangeProtocol(config *dt.HealthServerConfig) *ExchangeProtocol {
 	return &ExchangeProtocol{
-		Id:               config.Owner,
+		Id:               config.Id,
 		Addr:             config.Addr,
 		Peers:            config.Peers,
 		SkipSubjectPeers: make(map[dt.EntityId]IgnoreSet),
 		Clients:          make(map[dt.EntityId]pb.HealthServiceClient),
-		me:               &pb.Peer{string(config.Owner), config.Addr},
+		me:               &pb.Peer{string(config.Id), config.Addr},
 		mu:               &sync.Mutex{},
 	}
 }

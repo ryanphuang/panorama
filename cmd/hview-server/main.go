@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"deephealth/service"
+	// "deephealth/service"
 	dt "deephealth/types"
 )
 
@@ -36,6 +36,15 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		myaddr, ok := config.Peers[config.Id]
+		if !ok {
+			panic("Id is not present in peers")
+		}
+		if len(config.Addr) == 0 {
+			config.Addr = myaddr
+		} else if config.Addr != myaddr {
+			panic("Addr is not the same as the one in peers")
+		}
 	} else {
 		faddr := *addr
 		if !strings.ContainsAny(*addr, ":") {
@@ -53,7 +62,7 @@ func main() {
 		}
 		config = &dt.HealthServerConfig{
 			Addr:     faddr,
-			Owner:    dt.EntityId(args[0]),
+			Id:       dt.EntityId(args[0]),
 			Subjects: subjects,
 		}
 	}
