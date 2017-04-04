@@ -148,11 +148,11 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 	}
 	dh.LogD(stag, "got ping request from %s at time %s", in.Source.Id, ts)
 	now := time.Now()
-	nowt, err := ptypes.TimestampProto(now)
+	pnow, err := ptypes.TimestampProto(now)
 	if err != nil {
 		return nil, err
 	}
-	return &pb.PingReply{Result: pb.PingReply_GOOD, Time: nowt}, nil
+	return &pb.PingReply{Result: pb.PingReply_GOOD, Time: pnow}, nil
 }
 
 func (self *HealthGServer) AnalyzeReport(report *dt.Report) {

@@ -97,11 +97,12 @@ func (self *ExchangeProtocol) Ping(peer dt.EntityId) (*dt.PingReply, error) {
 	if err != nil {
 		return nil, err
 	}
-	now, err := ptypes.TimestampProto(time.Now())
+	now := time.Now()
+	pnow, err := ptypes.TimestampProto(now)
 	if err != nil {
 		return nil, err
 	}
-	request := &pb.PingRequest{Source: self.me, Time: now}
+	request := &pb.PingRequest{Source: self.me, Time: pnow}
 	dh.LogD(etag, "ping %s at %s", peer, now)
 	reply, err := client.Ping(context.Background(), request)
 	if err != nil {
@@ -119,6 +120,9 @@ func (self *ExchangeProtocol) PingAll() (map[dt.EntityId]*dt.PingReply, error) {
 	var ferr error
 	result := make(map[dt.EntityId]*dt.PingReply)
 	for peer, _ := range self.Peers {
+		if peer == self.Id {
+			continue
+		}
 		reply, err := self.Ping(peer)
 		if err != nil {
 			ferr = err
