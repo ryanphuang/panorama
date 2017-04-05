@@ -19,6 +19,11 @@ import edu.jhu.order.deephealth.Service.ObserveReply;
 import edu.jhu.order.deephealth.Service.ObserveRequest;
 import edu.jhu.order.deephealth.Service.SubmitReportReply;
 import edu.jhu.order.deephealth.Service.SubmitReportRequest;
+import edu.jhu.order.deephealth.Service.PingRequest;
+import edu.jhu.order.deephealth.Service.PingReply;
+import edu.jhu.order.deephealth.Service.Peer;
+
+import com.google.protobuf.util.Timestamps;
 
 public class DHClient
 {
@@ -148,11 +153,26 @@ public class DHClient
     try {
       reply = blockingStub.getLatestReport(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("RCP failed: " + e.getStatus());
+      logger.warning("RPC failed: " + e.getStatus());
       return null;
     }
     Report report = reply.getReport();
     logger.info("Result: " + report);
     return report;
+  }
+
+  public long Ping(String subject)
+  {
+    long timeMillis = System.currentTimeMillis();
+    Peer source = Peer.newBuilder().setId(id).setAddr("localhost").build();
+    PingRequest request = PingRequest.newBuilder().setSource(source).setTime(Timestamps.fromMillis(timeMillis)).build();
+    PingReply reply;
+    try {
+      reply = blockingStub.ping(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("Ping failed: " + e.getStatus());
+      return -1;
+    }
+    return Timestamps.toMillis(reply.getTime());
   }
 }
