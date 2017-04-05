@@ -4,8 +4,10 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import edu.jhu.order.deephealth.Health.Observation;
@@ -174,6 +176,10 @@ public class DHClient
       logger.warning("Ping failed: " + e.getStatus());
       return -1;
     }
-    return Timestamps.toMillis(reply.getTime());
+    long result = Timestamps.toMillis(reply.getTime());
+    Date date = new Date(result);
+    DateFormat formatter = new SimpleDateFormat("HH:mm:ss:SSS");
+    logger.info("Got ping reply with time: " + formatter.format(date));
+    return result;
   }
 }
