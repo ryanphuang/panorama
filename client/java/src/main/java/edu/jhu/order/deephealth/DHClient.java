@@ -161,7 +161,8 @@ public class DHClient
     return report;
   }
 
-  public long Ping(String subject)
+  // ping local health server
+  public long Ping()
   {
     long timeMillis = System.currentTimeMillis();
     Peer source = Peer.newBuilder().setId(id).setAddr("localhost").build();
