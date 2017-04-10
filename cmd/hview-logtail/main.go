@@ -47,7 +47,17 @@ type Event struct {
 var (
 	config   = flag.String("conf", "logtail.conf", "configuration to the logtail service")
 	reg      = mRegexp{regexp.MustCompile(`^(?P<time>[0-9,-: ]+) \[myid:(?P<id>\d+)\] - (?P<level>[A-Z]+) +\[(?P<tag>.+):(?P<class>[a-zA-Z_\$]+)@(?P<line>[0-9]+)\] - (?P<content>.+)`)}
-	commTags = map[string]bool{"RecvWorker": true, "SendWorker": true}
+	commTags = map[string]*regexp.Regexp{
+		"RecvWorker": nil,
+		"SendWorker": nil,
+		"SyncThread": regexp.MustCompile("^Too busy to snap, skipping.*$"),
+	}
+	selfTags = map[string]*regexp.Regexp{
+		"Snapshot Thread": regexp.MustCompile("^Slow serializing node .*$"),
+	}
+	ipTags = map[string]*regexp.Regexp{
+		"LearnerHandler-/": regexp.MustCompile("^Slow serializing node .*$"),
+	}
 )
 
 const (
@@ -71,19 +81,46 @@ func parseEvent(line string) *Event {
 		return nil
 	}
 	fields := strings.Split(result["tag"], ":")
-	if len(fields) != 2 {
-		return nil
-	}
-	_, ok := commTags[fields[0]]
-	if !ok {
-		return nil
-	}
-	_, err := strconv.Atoi(fields[1])
-	if err == nil {
-		ts, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
-		if err == nil {
-			return &Event{ts: ts, id: result["id"], subject: fields[1], context: fields[0], extra: result["content"]}
+	l := len(fields)
+	myid := "peer@" + result["id"]
+	subject := myid
+	if l == 1 {
+		re, ok := selfTags[fields[0]]
+		if !ok || !re.MatchString(result["content"]) {
+			return nil
 		}
+	} else if l == 2 {
+		re, ok := commTags[fields[0]]
+		found := false
+		if !ok {
+			for pref, cre := range ipTags {
+				if strings.HasPrefix(fields[0], pref) {
+					if cre.MatchString(result["content"]) {
+						found = true
+						subject = fields[0][len(pref):]
+					}
+					break
+				}
+			}
+			if !found {
+				return nil
+			}
+		} else {
+			if re != nil && !re.MatchString(result["content"]) {
+				return nil
+			}
+			_, err := strconv.Atoi(fields[1])
+			if err != nil {
+				return nil
+			}
+			subject = "peer@" + fields[1]
+		}
+	} else {
+		return nil
+	}
+	ts, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
+	if err == nil {
+		return &Event{ts: ts, id: myid, subject: subject, context: fields[0], extra: result["content"]}
 	}
 	return nil
 }
@@ -107,11 +144,11 @@ func reportEvent(client pb.HealthServiceClient, event *Event) error {
 	}
 	switch reply.Result {
 	case pb.SubmitReportReply_ACCEPTED:
-		fmt.Printf("Accepted to report %s\n", event)
+		fmt.Printf("Accepted report %s\n", event)
 	case pb.SubmitReportReply_IGNORED:
-		fmt.Printf("Ignored to report %s\n", event)
+		fmt.Printf("Ignored report %s\n", event)
 	case pb.SubmitReportReply_FAILED:
-		fmt.Printf("Failed to report %s\n", event)
+		fmt.Printf("Failed report %s\n", event)
 	}
 	return nil
 }
