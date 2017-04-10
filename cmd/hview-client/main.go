@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -23,6 +25,7 @@ const (
 	 me observer
 	 report subject [<metric:status:score...>]
 	 get subject
+	 ping
 	 help
 	 exit
 `
@@ -89,6 +92,26 @@ func runCmd(u *uclient, args []string) bool {
 
 	cmd := args[0]
 	switch cmd {
+	case "ping":
+		if u.nc != nil {
+			err = fmt.Errorf("not implemented")
+		} else {
+			now := time.Now()
+			pnow, err := ptypes.TimestampProto(now)
+			if err == nil {
+				request := &pb.PingRequest{Source: &pb.Peer{string(observer), "localhost"}, Time: pnow}
+				reply, err := u.gc.Ping(context.Background(), request)
+				if err == nil {
+					t, err := ptypes.Timestamp(reply.Time)
+					if err == nil {
+						fmt.Println("ping reply at time %s", t)
+					}
+				}
+			}
+			if err != nil {
+				logError(err)
+			}
+		}
 	case "report":
 		r := parseReport(args)
 		if u.nc != nil {
