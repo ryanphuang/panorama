@@ -92,7 +92,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		return &pb.SubmitReportReply{Result: pb.SubmitReportReply_FAILED}, fmt.Errorf("Fail to parse report")
 	}
 	var result pb.SubmitReportReply_Status
-	rc, err := self.storage.AddReport(report, self.FilterSubmission)
+	rc, err := self.storage.AddReport(report, false) // never ignore local reports
 	switch rc {
 	case store.REPORT_IGNORED:
 		result = pb.SubmitReportReply_IGNORED
