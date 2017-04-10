@@ -1,15 +1,148 @@
 package main
 
 import (
-	"github.com/hpcloud/tail"
-
+	"flag"
 	"fmt"
+	"os"
+	"regexp"
+	"strconv"
+	"strings"
+	"time"
+
+	"github.com/hpcloud/tail"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
+	pb "deephealth/build/gen"
+	dt "deephealth/types"
 )
 
+type mRegexp struct {
+	*regexp.Regexp
+}
+
+func (r *mRegexp) FindStringSubmatchMap(s string) map[string]string {
+	groups := make(map[string]string)
+	result := r.FindStringSubmatch(s)
+	if result == nil {
+		return groups
+	}
+	for i, name := range r.SubexpNames() {
+		if i == 0 || name == "" {
+			continue
+		}
+		groups[name] = result[i]
+	}
+	return groups
+}
+
+type Event struct {
+	ts      time.Time
+	id      string
+	subject string
+	context string
+	extra   string
+}
+
+var (
+	config   = flag.String("conf", "logtail.conf", "configuration to the logtail service")
+	reg      = mRegexp{regexp.MustCompile(`^(?P<time>[0-9,-: ]+) \[myid:(?P<id>\d+)\] - (?P<level>[A-Z]+) +\[(?P<tag>.+):(?P<class>[a-zA-Z_\$]+)@(?P<line>[0-9]+)\] - (?P<content>.+)`)}
+	commTags = map[string]bool{"RecvWorker": true, "SendWorker": true}
+)
+
+const (
+	staleSeconds = 5 * 60 // 5 minutes
+	mergeSeconds = 5      // merge within 5 seconds
+)
+
+var lastReportTime = make(map[string]time.Time)
+
+func usage() {
+	fmt.Printf("Usage: %s [OPTIONS] <log file> <server address>...\n\n", os.Args[0])
+	flag.PrintDefaults()
+}
+
+func parseEvent(line string) *Event {
+	result := reg.FindStringSubmatchMap(line)
+	if len(result) == 0 {
+		return nil
+	}
+	if result["level"] == "INFO" || result["level"] == "DEBUG" {
+		return nil
+	}
+	fields := strings.Split(result["tag"], ":")
+	if len(fields) != 2 {
+		return nil
+	}
+	_, ok := commTags[fields[0]]
+	if !ok {
+		return nil
+	}
+	_, err := strconv.Atoi(fields[1])
+	if err == nil {
+		ts, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
+		if err == nil {
+			return &Event{ts: ts, id: result["id"], subject: fields[1], context: fields[0], extra: result["content"]}
+		}
+	}
+	return nil
+}
+
+func reportEvent(client pb.HealthServiceClient, event *Event) error {
+	ts, ok := lastReportTime[event.subject]
+	if ok && time.Now().Sub(ts).Seconds() < mergeSeconds {
+		fmt.Printf("report for %s is too frequent, skip\n", event.subject)
+		return nil
+	}
+	observation := dt.NewPbObservationSingleMetric(event.ts, event.context, pb.Status_UNHEALTHY, 20)
+	report := &pb.Report{
+		Observer:    event.id,
+		Subject:     event.subject,
+		Observation: observation,
+	}
+	reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+	lastReportTime[event.subject] = time.Now()
+	if err != nil {
+		return err
+	}
+	switch reply.Result {
+	case pb.SubmitReportReply_ACCEPTED:
+		fmt.Printf("Accepted to report %s\n", event)
+	case pb.SubmitReportReply_IGNORED:
+		fmt.Printf("Ignored to report %s\n", event)
+	case pb.SubmitReportReply_FAILED:
+		fmt.Printf("Failed to report %s\n", event)
+	}
+	return nil
+}
+
 func main() {
-	fmt.Println("vim-go")
-	t, _ := tail.TailFile("/var/log/syslog", tail.Config{Follow: true})
+	flag.Usage = usage
+	flag.Parse()
+	if flag.NArg() != 2 {
+		flag.Usage()
+		os.Exit(1)
+	}
+
+	addr := flag.Arg(1)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
+	}
+	defer conn.Close()
+	client := pb.NewHealthServiceClient(conn)
+
+	t, _ := tail.TailFile(flag.Arg(0), tail.Config{Follow: true})
 	for line := range t.Lines {
-		fmt.Println(line.Text)
+		event := parseEvent(line.Text)
+		if event != nil {
+			/*
+				if time.Since(event.ts).Seconds() > staleSeconds {
+					fmt.Printf("skip stale event: %s\n", event)
+					continue
+				}
+			*/
+			reportEvent(client, event)
+		}
 	}
 }

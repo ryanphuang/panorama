@@ -1,6 +1,8 @@
 package types
 
 import (
+	"time"
+
 	pb "deephealth/build/gen"
 	"github.com/golang/protobuf/ptypes"
 )
@@ -130,5 +132,18 @@ func ReportFromPb(in *pb.Report) *Report {
 		Observer:    EntityId(in.Observer),
 		Subject:     EntityId(in.Subject),
 		Observation: observation,
+	}
+}
+
+func NewPbObservationSingleMetric(t time.Time, name string, status pb.Status, score float32) *pb.Observation {
+	ts, err := ptypes.TimestampProto(t)
+	if err != nil {
+		return nil
+	}
+	metrics := make(map[string]*pb.Metric)
+	metrics[name] = &pb.Metric{name, status, score}
+	return &pb.Observation{
+		Ts:      ts,
+		Metrics: metrics,
 	}
 }

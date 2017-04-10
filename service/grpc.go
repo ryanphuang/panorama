@@ -121,9 +121,9 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 		result = pb.LearnReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.LearnReportReply_ACCEPTED
+		go self.AnalyzeReport(report)
+		go self.exchange.Interested(dt.EntityId(in.Source.Id), report.Subject)
 	}
-	go self.AnalyzeReport(report)
-	go self.exchange.Interested(dt.EntityId(in.Source.Id), report.Subject)
 	return &pb.LearnReportReply{Result: result}, err
 }
 

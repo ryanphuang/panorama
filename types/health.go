@@ -95,12 +95,18 @@ func (self *Observation) AddMetric(name string, status Status, score float32) *O
 	return self
 }
 
-func NewObservation(time time.Time, names ...string) *Observation {
+func NewObservationSingleMetric(t time.Time, name string, status Status, score float32) *Observation {
+	metrics := make(Metrics)
+	metrics[name] = &Metric{name, Value{status, score}}
+	return &Observation{Ts: t, Metrics: metrics}
+}
+
+func NewObservation(t time.Time, names ...string) *Observation {
 	metrics := make(Metrics)
 	for _, name := range names {
 		metrics[name] = &Metric{name, Value{INVALID, 0.0}}
 	}
-	return &Observation{Ts: time, Metrics: metrics}
+	return &Observation{Ts: t, Metrics: metrics}
 }
 
 func NewReport(observer EntityId, subject EntityId, metrics map[string]Value) *Report {
