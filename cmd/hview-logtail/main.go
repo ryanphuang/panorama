@@ -1,8 +1,10 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"regexp"
 	"strconv"
@@ -66,9 +68,10 @@ const (
 )
 
 var lastReportTime = make(map[string]time.Time)
+var ipEntities = make(map[string]string)
 
 func usage() {
-	fmt.Printf("Usage: %s [OPTIONS] <log file> <server address>...\n\n", os.Args[0])
+	fmt.Printf("Usage: %s [OPTIONS] <server address> <log file> [<ensemble file>]...\n\n", os.Args[0])
 	flag.PrintDefaults()
 }
 
@@ -96,8 +99,14 @@ func parseEvent(line string) *Event {
 			for pref, cre := range ipTags {
 				if strings.HasPrefix(fields[0], pref) {
 					if cre.MatchString(result["content"]) {
+						ip := fields[0][len(pref):]
 						found = true
-						subject = fields[0][len(pref):]
+						eid, ok := ipEntities[ip]
+						if ok {
+							subject = eid
+						} else {
+							subject = ip
+						}
 					}
 					break
 				}
@@ -156,12 +165,40 @@ func reportEvent(client pb.HealthServiceClient, event *Event) error {
 func main() {
 	flag.Usage = usage
 	flag.Parse()
-	if flag.NArg() != 2 {
+	if flag.NArg() == 3 {
+		fp, err := os.Open(flag.Arg(2))
+		if err != nil {
+			panic(err)
+		}
+		scanner := bufio.NewScanner(fp)
+		for scanner.Scan() {
+			text := scanner.Text()
+			if len(text) > 0 {
+				parts := strings.Split(text, "=")
+				if len(parts) != 2 {
+					fmt.Println("Ensemble file should have IP:ID format")
+					os.Exit(1)
+				}
+				ip := net.ParseIP(parts[1])
+				if ip == nil {
+					sips, err := net.LookupIP(parts[1])
+					if err == nil {
+						ipEntities[sips[0].String()] = parts[0]
+					}
+				} else {
+					ipEntities[parts[1]] = parts[0]
+				}
+			}
+		}
+		fmt.Println(ipEntities)
+	} else if flag.NArg() != 2 {
 		flag.Usage()
 		os.Exit(1)
 	}
 
-	addr := flag.Arg(1)
+	addr := flag.Arg(0)
+	log := flag.Arg(1)
+
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
 	if err != nil {
 		panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
@@ -169,7 +206,7 @@ func main() {
 	defer conn.Close()
 	client := pb.NewHealthServiceClient(conn)
 
-	t, _ := tail.TailFile(flag.Arg(0), tail.Config{Follow: true})
+	t, _ := tail.TailFile(log, tail.Config{Follow: true})
 	for line := range t.Lines {
 		event := parseEvent(line.Text)
 		if event != nil {
