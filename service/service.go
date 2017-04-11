@@ -121,64 +121,27 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 	return &pb.LearnReportReply{Result: result}, err
 }
 
-func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
+func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.Report, error) {
 	report := self.storage.GetLatestReport(in.Subject)
-	return &pb.GetReportReply{Report: report}, nil
+	return report, nil
 }
 
-func (self *HealthGServer) GetPanorama(in *pb.GetReportRequest, stream pb.HealthService_GetPanoramaServer) error {
-	panorama, l := self.storage.GetPanorama(in.Subject)
-	if panorama == nil || l == nil {
-		return fmt.Errorf("cannot get panorama for %s\n", in.Subject)
-	}
-	var reports []*pb.GetReportReply
-	l.Lock()
-	for observer, view := range panorama.Views {
-		for _, ob := range view.Observations {
-			report := &pb.Report{
-				Observer:    observer,
-				Subject:     in.Subject,
-				Observation: ob,
-			}
-			reports = append(reports, &pb.GetReportReply{Report: report})
-		}
-	}
-	l.Unlock()
-	for _, report := range reports {
-		if err := stream.Send(report); err != nil {
-			return err
-		}
-	}
-	return nil
+func (self *HealthGServer) GetPanorama(ctx context.Context, in *pb.GetPanoramaRequest) (*pb.Panorama, error) {
+	panorama, _ := self.storage.GetPanorama(in.Subject)
+	return panorama, nil
 }
 
-func (self *HealthGServer) GetView(in *pb.GetViewRequest, stream pb.HealthService_GetViewServer) error {
-	view, l := self.storage.GetView(in.Subject, in.Observer)
-	var reports []*pb.GetReportReply
-	l.Lock()
-	for _, ob := range view.Observations {
-		report := &pb.Report{
-			Observer:    in.Observer,
-			Subject:     in.Subject,
-			Observation: ob,
-		}
-		reports = append(reports, &pb.GetReportReply{Report: report})
-	}
-	l.Unlock()
-	for _, report := range reports {
-		if err := stream.Send(report); err != nil {
-			return err
-		}
-	}
-	return nil
+func (self *HealthGServer) GetView(ctx context.Context, in *pb.GetViewRequest) (*pb.View, error) {
+	view, _ := self.storage.GetView(in.Subject, in.Observer)
+	return view, nil
 }
 
-func (self *HealthGServer) GetInference(ctx context.Context, in *pb.GetInferenceRequest) (*pb.GetInferenceReply, error) {
+func (self *HealthGServer) GetInference(ctx context.Context, in *pb.GetInferenceRequest) (*pb.Inference, error) {
 	inference := self.inference.GetInference(in.Subject)
 	if inference == nil {
 		return nil, fmt.Errorf("inference does not exist for view")
 	}
-	return &pb.GetInferenceReply{inference}, nil
+	return inference, nil
 }
 
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {

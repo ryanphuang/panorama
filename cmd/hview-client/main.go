@@ -22,7 +22,7 @@ const (
 	cmdHelp = `Command list:
 	 me observer
 	 report subject [<metric:status:score...>]
-	 get subject
+	 get [report|view|panorama] [observer] subject 
 	 ping
 	 help
 	 exit
@@ -93,6 +93,7 @@ func runCmd(args []string) bool {
 		}
 		if err != nil {
 			logError(err)
+			return false
 		}
 	case "report":
 		r := parseReport(args)
@@ -107,13 +108,53 @@ func runCmd(args []string) bool {
 		}
 		if err != nil {
 			logError(err)
+			return false
 		}
 	case "get":
-		reply, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[1]})
-		if err == nil {
-			fmt.Println(reply.Report)
-		} else {
-			logError(err)
+		if len(args) == 1 {
+			fmt.Println(cmdHelp)
+			return false
+		}
+		switch args[1] {
+		case "report":
+			if len(args) != 3 {
+				fmt.Println(cmdHelp)
+				return false
+			}
+			report, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[2]})
+			if err == nil {
+				fmt.Println(report)
+				return false
+			} else {
+				logError(err)
+			}
+		case "view":
+			if len(args) != 4 {
+				fmt.Println(cmdHelp)
+				return false
+			}
+			view, err := client.GetView(context.Background(), &pb.GetViewRequest{Observer: args[2], Subject: args[3]})
+			if err == nil {
+				fmt.Println(view)
+				return false
+			} else {
+				logError(err)
+			}
+		case "panorama":
+			if len(args) != 3 {
+				fmt.Println(cmdHelp)
+				return false
+			}
+			pano, err := client.GetPanorama(context.Background(), &pb.GetPanoramaRequest{Subject: args[2]})
+			if err == nil {
+				fmt.Println(pano)
+				return false
+			} else {
+				logError(err)
+			}
+		default:
+			fmt.Println(cmdHelp)
+			return false
 		}
 	case "me":
 		if len(args) == 1 {

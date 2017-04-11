@@ -23,16 +23,16 @@ service HealthService {
   rpc LearnReport(LearnReportRequest) returns (LearnReportReply) {}
 
 	// Query the latest raw health report of an entity
-  rpc GetLatestReport(GetReportRequest) returns (GetReportReply) {}
+  rpc GetLatestReport(GetReportRequest) returns (Report) {}
 
 	// Query all raw health report of an entity
-  rpc GetPanorama(GetReportRequest) returns (stream GetReportReply) {}
+  rpc GetPanorama(GetPanoramaRequest) returns (Panorama) {}
 
 	// Query all raw health report of an entity
-  rpc GetView(GetViewRequest) returns (stream GetReportReply) {}
+  rpc GetView(GetViewRequest) returns (View) {}
 
 	// Query all raw health report of an entity
-  rpc GetInference(GetInferenceRequest) returns (GetInferenceReply) {}
+  rpc GetInference(GetInferenceRequest) returns (Inference) {}
 
   // ping request to test liveness of a health server
   rpc Ping(PingRequest) returns (PingReply) {}
@@ -78,6 +78,10 @@ message SubmitReportReply {
   Status result = 1;
 }
 
+message GetPanoramaRequest {
+  string subject = 1;
+}
+
 message GetViewRequest {
   string subject = 1;
   string observer = 2;
@@ -87,16 +91,8 @@ message GetReportRequest {
   string subject = 1;
 }
 
-message GetReportReply {
-  Report report = 1;
-}
-
 message GetInferenceRequest {
   string subject = 1;
-}
-
-message GetInferenceReply {
-  Inference inference = 1;
 }
 
 message PingRequest {

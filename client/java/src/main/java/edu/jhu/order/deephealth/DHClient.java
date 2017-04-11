@@ -15,7 +15,6 @@ import edu.jhu.order.deephealth.Health.Report;
 import edu.jhu.order.deephealth.Health.Metric;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceBlockingStub;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceStub;
-import edu.jhu.order.deephealth.Service.GetReportReply;
 import edu.jhu.order.deephealth.Service.GetReportRequest;
 import edu.jhu.order.deephealth.Service.ObserveReply;
 import edu.jhu.order.deephealth.Service.ObserveRequest;
@@ -151,14 +150,13 @@ public class DHClient
   {
     logger.info("Getting report for " + subject);
     GetReportRequest request = GetReportRequest.newBuilder().setSubject(subject).build();
-    GetReportReply reply;
+    Report report;
     try {
-      reply = blockingStub.getLatestReport(request);
+      report = blockingStub.getLatestReport(request);
     } catch (StatusRuntimeException e) {
       logger.warning("RPC failed: " + e.getStatus());
       return null;
     }
-    Report report = reply.getReport();
     logger.info("Result: " + report);
     return report;
   }
