@@ -7,18 +7,20 @@ import (
 	dh "deephealth"
 	dd "deephealth/decision"
 	dt "deephealth/types"
+
+	pb "deephealth/build/gen"
 )
 
 const (
 	itag = "inference"
 )
 
-type InferMap map[dt.EntityId]*dt.Inference
+type InferMap map[string]*pb.Inference
 
 type HealthInferenceStorage struct {
 	Results   InferMap
-	Workbooks map[dt.EntityId]InferMap
-	ReportCh  chan *dt.Report
+	Workbooks map[string]InferMap
+	ReportCh  chan *pb.Report
 
 	raw   *RawHealthStorage
 	algo  dd.InferenceAlgo
@@ -29,8 +31,8 @@ type HealthInferenceStorage struct {
 func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *HealthInferenceStorage {
 	storage := &HealthInferenceStorage{
 		Results:   make(InferMap),
-		Workbooks: make(map[dt.EntityId]InferMap),
-		ReportCh:  make(chan *dt.Report, 10),
+		Workbooks: make(map[string]InferMap),
+		ReportCh:  make(chan *pb.Report, 10),
 		raw:       raw,
 		algo:      algo,
 		mu:        &sync.Mutex{},
@@ -39,7 +41,7 @@ func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *He
 	return storage
 }
 
-func (self *HealthInferenceStorage) Infer(report *dt.Report) (*dt.Inference, error) {
+func (self *HealthInferenceStorage) Infer(report *pb.Report) (*pb.Inference, error) {
 	panorama, l := self.raw.GetPanorama(report.Subject)
 	if panorama == nil || l == nil {
 		return nil, fmt.Errorf("cannot get panorama for %s\n", report.Subject)
@@ -55,14 +57,14 @@ func (self *HealthInferenceStorage) Infer(report *dt.Report) (*dt.Inference, err
 	if inference == nil {
 		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}
-	dh.LogD(itag, "inference result for %s: %s", report.Subject, *inference.Observation)
+	dh.LogD(itag, "inference result for %s: %s", report.Subject, dt.ObservationString(inference.Observation))
 	self.mu.Lock()
 	self.Results[report.Subject] = inference
 	self.mu.Unlock()
 	return inference, nil
 }
 
-func (self *HealthInferenceStorage) GetInference(subject dt.EntityId) *dt.Inference {
+func (self *HealthInferenceStorage) GetInference(subject string) *pb.Inference {
 	self.mu.Lock()
 	inference, ok := self.Results[subject]
 	self.mu.Unlock()
@@ -87,7 +89,7 @@ func (self *HealthInferenceStorage) Start() error {
 
 func (self *HealthInferenceStorage) Stop() error {
 	self.alive = false
-	var report dt.Report
+	var report pb.Report
 	select {
 	case self.ReportCh <- &report:
 		dh.LogI(itag, "send empty report to stop the service")

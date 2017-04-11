@@ -13,7 +13,6 @@ import (
 
 	dh "deephealth"
 	pb "deephealth/build/gen"
-	"deephealth/client"
 	dt "deephealth/types"
 )
 
@@ -22,60 +21,37 @@ const (
 	portend   = 30000
 )
 
-type uclient struct {
-	nc *client.NClient
-	gc pb.HealthServiceClient
-}
-
-var u uclient
+var client pb.HealthServiceClient
 
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 var (
-	g      = flag.Bool("grpc", true, "use grpc service client")
 	remote = flag.Bool("remote", false, "whether to perform remote service test or not")
 	faddr  = flag.String("addr", "localhost:30000", "use this address instead of localhost")
 )
 
 func TestSubmitReport(t *testing.T) {
-	metrics := map[string]dt.Value{
-		"cpu":     dt.Value{dt.UNHEALTHY, 30},
-		"disk":    dt.Value{dt.HEALTHY, 90},
-		"network": dt.Value{dt.HEALTHY, 95},
+	metrics := map[string]*pb.Value{
+		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+		"network": &pb.Value{pb.Status_HEALTHY, 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
-	if u.nc != nil {
-		var reply int
-		err := u.nc.SubmitReport(report, &reply)
-		if err != nil {
-			t.Errorf("Fail to submit report: %v", err)
-		}
-	} else {
-		pbr := dt.ReportToPb(report)
-		_, err := u.gc.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: pbr})
-		if err != nil {
-			t.Errorf("Fail to submit report: %v", err)
-		}
-		fmt.Println("Submitted report")
+	_, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+	if err != nil {
+		t.Errorf("Fail to submit report: %v", err)
 	}
+	fmt.Println("Submitted report")
 }
 
 func BenchmarkSubmitReport(b *testing.B) {
-	metrics := map[string]dt.Value{
-		"cpu":     dt.Value{dt.UNHEALTHY, 30},
-		"disk":    dt.Value{dt.HEALTHY, 90},
-		"network": dt.Value{dt.HEALTHY, 95},
+	metrics := map[string]*pb.Value{
+		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+		"network": &pb.Value{pb.Status_HEALTHY, 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
-	var reply int
-	if u.nc != nil {
-		for i := 0; i < b.N; i++ {
-			u.nc.SubmitReport(report, &reply)
-		}
-	} else {
-		pbr := dt.ReportToPb(report)
-		for i := 0; i < b.N; i++ {
-			u.gc.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: pbr})
-		}
+	for i := 0; i < b.N; i++ {
+		client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
 	}
 }
 
@@ -88,7 +64,7 @@ func TestMain(m *testing.M) {
 	if !*remote {
 		port := portstart + int(r.Intn(portend-portstart))
 		addr = fmt.Sprintf("localhost:%d", port)
-		subjects := []dt.EntityId{"TS_1", "TS_2", "TS_3", "TS_4"}
+		subjects := []string{"TS_1", "TS_2", "TS_3", "TS_4"}
 		config = &dt.HealthServerConfig{
 			Addr:     addr,
 			Id:       "XFE_1",
@@ -99,26 +75,18 @@ func TestMain(m *testing.M) {
 		addr = *faddr
 	}
 
-	if *g {
-		conn, err := grpc.Dial(addr, grpc.WithInsecure())
-		if err != nil {
-			panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
-		}
-		defer conn.Close()
-		u.gc = pb.NewHealthServiceClient(conn)
-		if !*remote {
-			gs := NewHealthGServer(config)
-			errch := make(chan error)
-			gs.Start(errch)
-		}
-	} else {
-		u.nc = client.NewClient(addr, false)
-		if !*remote {
-			hs := NewHealthNServer(config)
-			hs.Start()
-		}
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
 	}
-	// time.Sleep(1)
+	defer conn.Close()
+	client = pb.NewHealthServiceClient(conn)
+	if !*remote {
+		gs := NewHealthGServer(config)
+		errch := make(chan error)
+		gs.Start(errch)
+	}
+	time.Sleep(3)
 
 	os.Exit(m.Run())
 }

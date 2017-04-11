@@ -1,7 +1,7 @@
 package client
 
 import (
-	dt "deephealth/types"
+	pb "deephealth/build/gen"
 )
 
 type NClient struct {
@@ -18,22 +18,22 @@ func NewClient(addr string, persistent bool) *NClient {
 	}
 }
 
-func (c *NClient) ObserveSubject(subject dt.EntityId, reply *bool) error {
+func (c *NClient) ObserveSubject(subject string, reply *bool) error {
 	return c.r.Call("HealthNServer.ObserveSubject", subject, &reply)
 }
 
-func (c *NClient) StopObservingSubject(subject dt.EntityId, reply *bool) error {
+func (c *NClient) StopObservingSubject(subject string, reply *bool) error {
 	return c.r.Call("HealthNServer.StopObservingSubject", subject, &reply)
 }
 
-func (c *NClient) SubmitReport(report *dt.Report, reply *int) error {
+func (c *NClient) SubmitReport(report *pb.Report, reply *int) error {
 	return c.r.Call("HealthNServer.SubmitReport", report, &reply)
 }
 
-func (c *NClient) GossipReport(report *dt.Report, reply *int) error {
+func (c *NClient) GossipReport(report *pb.Report, reply *int) error {
 	return c.r.Call("HealthNServer.GossipReport", report, &reply)
 }
 
-func (c *NClient) GetLatestReport(subject dt.EntityId, reply *dt.Report) error {
+func (c *NClient) GetLatestReport(subject string, reply *pb.Report) error {
 	return c.r.Call("HealthNServer.GetLatestReport", subject, &reply)
 }

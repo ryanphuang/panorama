@@ -1,18 +1,22 @@
 package types
 
-import "testing"
-import "time"
+import (
+	"testing"
+	"time"
+
+	pb "deephealth/build/gen"
+)
 
 func TestNewObservation(t *testing.T) {
-	var v *Observation
+	var v *pb.Observation
 	v = NewObservation(time.Now(), "cpu", "disk", "network")
 	if v == nil {
-		t.Error("Fail to make health vector")
+		t.Fatal("Fail to make health vector")
 	}
 	t.Log(v)
-	v.SetMetric("cpu", UNHEALTHY, 30)
-	m := v.GetMetric("cpu")
-	if m.Score != 30 {
+	SetMetric(v, "cpu", pb.Status_UNHEALTHY, 30)
+	m := GetMetric(v, "cpu")
+	if m.Value.Score != 30 {
 		t.Error("Fail to set CPU metric")
 	}
 	t.Log(m)

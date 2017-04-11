@@ -18,16 +18,16 @@ const (
 	etag = "exchange"
 )
 
-type IgnoreSet map[dt.EntityId]bool
+type IgnoreSet map[string]bool
 
 type ExchangeProtocol struct {
-	Id   dt.EntityId // my id
-	Addr string      // my addr
+	Id   string // my id
+	Addr string // my addr
 
-	Peers            map[dt.EntityId]string    // all peers' id and address
-	SkipSubjectPeers map[dt.EntityId]IgnoreSet // skip sending reports about a subject to certain peers
+	Peers            map[string]string    // all peers' id and address
+	SkipSubjectPeers map[string]IgnoreSet // skip sending reports about a subject to certain peers
 
-	Clients map[dt.EntityId]pb.HealthServiceClient // clients to all peers
+	Clients map[string]pb.HealthServiceClient // clients to all peers
 
 	me *pb.Peer
 	mu *sync.Mutex
@@ -40,17 +40,16 @@ func NewExchangeProtocol(config *dt.HealthServerConfig) *ExchangeProtocol {
 		Id:               config.Id,
 		Addr:             config.Addr,
 		Peers:            config.Peers,
-		SkipSubjectPeers: make(map[dt.EntityId]IgnoreSet),
-		Clients:          make(map[dt.EntityId]pb.HealthServiceClient),
+		SkipSubjectPeers: make(map[string]IgnoreSet),
+		Clients:          make(map[string]pb.HealthServiceClient),
 		me:               &pb.Peer{string(config.Id), config.Addr},
 		mu:               &sync.Mutex{},
 	}
 }
 
-func (self *ExchangeProtocol) Propagate(report *dt.Report) error {
+func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 	var ferr error
-	pbr := dt.ReportToPb(report)
-	request := &pb.LearnReportRequest{Source: self.me, Report: pbr}
+	request := &pb.LearnReportRequest{Source: self.me, Report: report}
 	self.mu.Lock()
 	ignoreset, ok := self.SkipSubjectPeers[report.Subject]
 	if !ok {
@@ -92,7 +91,7 @@ func (self *ExchangeProtocol) Propagate(report *dt.Report) error {
 	return ferr
 }
 
-func (self *ExchangeProtocol) Ping(peer dt.EntityId) (*dt.PingReply, error) {
+func (self *ExchangeProtocol) Ping(peer string) (*pb.PingReply, error) {
 	client, err := self.getOrMakeClient(peer)
 	if err != nil {
 		return nil, err
@@ -108,17 +107,13 @@ func (self *ExchangeProtocol) Ping(peer dt.EntityId) (*dt.PingReply, error) {
 	if err != nil {
 		return nil, err
 	}
-	t, err := ptypes.Timestamp(reply.Time)
-	if err != nil {
-		return nil, err
-	}
-	dh.LogD(etag, "got ping reply from %s at %s", peer, t)
-	return &dt.PingReply{t}, nil
+	dh.LogD(etag, "got ping reply from %s at %s", peer, ptypes.TimestampString(reply.Time))
+	return reply, nil
 }
 
-func (self *ExchangeProtocol) PingAll() (map[dt.EntityId]*dt.PingReply, error) {
+func (self *ExchangeProtocol) PingAll() (map[string]*pb.PingReply, error) {
 	var ferr error
-	result := make(map[dt.EntityId]*dt.PingReply)
+	result := make(map[string]*pb.PingReply)
 	for peer, _ := range self.Peers {
 		if peer == self.Id {
 			continue
@@ -133,7 +128,7 @@ func (self *ExchangeProtocol) PingAll() (map[dt.EntityId]*dt.PingReply, error) {
 	return result, ferr
 }
 
-func (self *ExchangeProtocol) Interested(peer dt.EntityId, subject dt.EntityId) bool {
+func (self *ExchangeProtocol) Interested(peer string, subject string) bool {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	ignoreset, ok := self.SkipSubjectPeers[subject]
@@ -148,7 +143,7 @@ func (self *ExchangeProtocol) Interested(peer dt.EntityId, subject dt.EntityId) 
 	return true
 }
 
-func (self *ExchangeProtocol) Uninterested(peer dt.EntityId, subject dt.EntityId) bool {
+func (self *ExchangeProtocol) Uninterested(peer string, subject string) bool {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	ignoreset, ok := self.SkipSubjectPeers[subject]
@@ -161,7 +156,7 @@ func (self *ExchangeProtocol) Uninterested(peer dt.EntityId, subject dt.EntityId
 	return true
 }
 
-func (self *ExchangeProtocol) getOrMakeClient(peer dt.EntityId) (pb.HealthServiceClient, error) {
+func (self *ExchangeProtocol) getOrMakeClient(peer string) (pb.HealthServiceClient, error) {
 	client, ok := self.Clients[peer]
 	if ok {
 		return client, nil

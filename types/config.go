@@ -8,10 +8,10 @@ import (
 
 type HealthServerConfig struct {
 	Addr             string
-	Id               EntityId
-	Subjects         []EntityId
-	Peers            map[EntityId]string // all peers' id and address
-	FilterSubmission bool                // whether to filter submitted report based on the subject id
+	Id               string
+	Subjects         []string
+	Peers            map[string]string // all peers' id and address
+	FilterSubmission bool              // whether to filter submitted report based on the subject id
 }
 
 func LoadConfig(path string) (*HealthServerConfig, error) {

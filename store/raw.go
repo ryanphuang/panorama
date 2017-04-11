@@ -1,13 +1,14 @@
 package store
 
 import (
-	"container/list"
 	"fmt"
 	"sync"
-	"time"
 
 	dh "deephealth"
+	pb "deephealth/build/gen"
 	dt "deephealth/types"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 const (
@@ -22,28 +23,28 @@ const (
 )
 
 type RawHealthStorage struct {
-	Tenants   map[dt.EntityId]*dt.Panorama
-	Locks     map[dt.EntityId]*sync.Mutex
-	Watchlist map[dt.EntityId]bool
+	Tenants   map[string]*pb.Panorama
+	Locks     map[string]*sync.Mutex
+	Watchlist map[string]bool
 
 	mu *sync.Mutex
 }
 
-func NewRawHealthStorage(subjects ...dt.EntityId) *RawHealthStorage {
+func NewRawHealthStorage(subjects ...string) *RawHealthStorage {
 	store := &RawHealthStorage{
-		Tenants:   make(map[dt.EntityId]*dt.Panorama),
-		Locks:     make(map[dt.EntityId]*sync.Mutex),
-		Watchlist: make(map[dt.EntityId]bool),
+		Tenants:   make(map[string]*pb.Panorama),
+		Locks:     make(map[string]*sync.Mutex),
+		Watchlist: make(map[string]bool),
 
 		mu: &sync.Mutex{},
 	}
-	var panorama *dt.Panorama
+	var panorama *pb.Panorama
 	for _, subject := range subjects {
 		store.Watchlist[subject] = true
 		store.Locks[subject] = new(sync.Mutex)
-		panorama = new(dt.Panorama)
+		panorama = new(pb.Panorama)
 		panorama.Subject = subject
-		panorama.Views = make(map[dt.EntityId]*dt.View)
+		panorama.Views = make(map[string]*pb.View)
 		store.Tenants[subject] = panorama
 	}
 	return store
@@ -51,7 +52,7 @@ func NewRawHealthStorage(subjects ...dt.EntityId) *RawHealthStorage {
 
 var _ dt.HealthStorage = new(RawHealthStorage)
 
-func (self *RawHealthStorage) AddSubject(subject dt.EntityId) bool {
+func (self *RawHealthStorage) AddSubject(subject string) bool {
 	self.mu.Lock()
 	_, ok := self.Watchlist[subject]
 	self.Watchlist[subject] = true
@@ -59,7 +60,7 @@ func (self *RawHealthStorage) AddSubject(subject dt.EntityId) bool {
 	return !ok
 }
 
-func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) bool {
+func (self *RawHealthStorage) RemoveSubject(subject string, clean bool) bool {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	_, ok := self.Watchlist[subject]
@@ -71,7 +72,7 @@ func (self *RawHealthStorage) RemoveSubject(subject dt.EntityId, clean bool) boo
 	return ok
 }
 
-func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, error) {
+func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, error) {
 	self.mu.Lock()
 	_, ok := self.Watchlist[report.Subject]
 	if !ok {
@@ -92,9 +93,9 @@ func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, er
 	}
 	panorama, ok := self.Tenants[report.Subject]
 	if !ok {
-		panorama = &dt.Panorama{
+		panorama = &pb.Panorama{
 			Subject: report.Subject,
-			Views:   make(map[dt.EntityId]*dt.View),
+			Views:   make(map[string]*pb.View),
 		}
 		self.Tenants[report.Subject] = panorama
 	}
@@ -103,24 +104,24 @@ func (self *RawHealthStorage) AddReport(report *dt.Report, filter bool) (int, er
 	defer l.Unlock()
 	view, ok := panorama.Views[report.Observer]
 	if !ok {
-		view = &dt.View{
+		view = &pb.View{
 			Observer:     report.Observer,
 			Subject:      report.Subject,
-			Observations: list.New(),
+			Observations: make([]*pb.Observation, 0, MaxReportPerView),
 		}
 		panorama.Views[report.Observer] = view
 		dh.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
-	view.Observations.PushBack(report.Observation)
-	dh.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, report.Observation)
-	if view.Observations.Len() > MaxReportPerView {
+	view.Observations = append(view.Observations, report.Observation)
+	dh.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
+	if len(view.Observations) > MaxReportPerView {
 		dh.LogD(tag, "truncating list")
-		view.Observations.Remove(view.Observations.Front())
+		view.Observations = view.Observations[1:]
 	}
 	return REPORT_ACCEPTED, nil
 }
 
-func (self *RawHealthStorage) GetPanorama(subject dt.EntityId) (*dt.Panorama, *sync.Mutex) {
+func (self *RawHealthStorage) GetPanorama(subject string) (*pb.Panorama, *sync.Mutex) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	_, ok := self.Watchlist[subject]
@@ -136,7 +137,7 @@ func (self *RawHealthStorage) GetPanorama(subject dt.EntityId) (*dt.Panorama, *s
 	return nil, nil
 }
 
-func (self *RawHealthStorage) GetView(observer dt.EntityId, subject dt.EntityId) (*dt.View, *sync.Mutex) {
+func (self *RawHealthStorage) GetView(observer string, subject string) (*pb.View, *sync.Mutex) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	_, ok := self.Watchlist[subject]
@@ -155,7 +156,7 @@ func (self *RawHealthStorage) GetView(observer dt.EntityId, subject dt.EntityId)
 	return nil, nil
 }
 
-func (self *RawHealthStorage) GetLatestReport(subject dt.EntityId) *dt.Report {
+func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 	self.mu.Lock()
 	l, ok := self.Locks[subject]
 	if !ok {
@@ -168,24 +169,24 @@ func (self *RawHealthStorage) GetLatestReport(subject dt.EntityId) *dt.Report {
 	if !ok {
 		return nil
 	}
-	var max_ts time.Time
-	var recent_ob *dt.Observation
-	var who dt.EntityId
+	var max_ts *timestamp.Timestamp
+	var recent_ob *pb.Observation
+	var who string
 	first := true
 	for observer, view := range panorama.Views {
-		e := view.Observations.Back()
-		val := e.Value.(*dt.Observation)
-		if first || max_ts.Before(val.Ts) {
-			first = false
-			max_ts = val.Ts
-			recent_ob = val
-			who = observer
+		for _, val := range view.Observations {
+			if first || dt.CompareTimestamp(max_ts, val.Ts) < 0 {
+				first = false
+				max_ts = val.Ts
+				recent_ob = val
+				who = observer
+			}
 		}
 	}
 	if recent_ob == nil {
 		return nil
 	}
-	return &dt.Report{
+	return &pb.Report{
 		Observer:    who,
 		Subject:     subject,
 		Observation: recent_ob,
@@ -196,10 +197,9 @@ func (self *RawHealthStorage) Dump() {
 	for subject, panorama := range self.Tenants {
 		fmt.Printf("=============%s=============\n", subject)
 		for observer, view := range panorama.Views {
-			fmt.Printf("%d observations for %s->%s\n", view.Observations.Len(), observer, subject)
-			for e := view.Observations.Front(); e != nil; e = e.Next() {
-				val := e.Value.(*dt.Observation)
-				fmt.Printf("|%s| %s %s\n", observer, val.Ts.Format(time.UnixDate), val.Metrics)
+			fmt.Printf("%d observations for %s->%s\n", len(view.Observations), observer, subject)
+			for _, ob := range view.Observations {
+				fmt.Printf("|%s| %s\n", observer, dt.ObservationString(ob))
 			}
 		}
 	}

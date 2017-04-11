@@ -2,36 +2,37 @@ package types
 
 import (
 	"sync"
-	"time"
+
+	pb "deephealth/build/gen"
 )
 
 type HealthStorage interface {
 	// Add a subject to the observing subject list
-	AddSubject(subject EntityId) bool
+	AddSubject(subject string) bool
 
 	// Stop observing a particular subject, all the reports
 	// concerning this subject will be ignored
-	RemoveSubject(subject EntityId, clean bool) bool
+	RemoveSubject(subject string, clean bool) bool
 
 	// Add a report to the view storage
-	AddReport(report *Report, filter bool) (int, error)
+	AddReport(report *pb.Report, filter bool) (int, error)
 
 	// Get the latest report for a subject
-	GetLatestReport(subject EntityId) *Report
+	GetLatestReport(subject string) *pb.Report
 
 	// Get the whole panorama for a subject
-	GetPanorama(subject EntityId) (*Panorama, *sync.Mutex)
+	GetPanorama(subject string) (*pb.Panorama, *sync.Mutex)
 
 	// Get the view from an observer about a subject
-	GetView(observer EntityId, subject EntityId) (*View, *sync.Mutex)
+	GetView(observer string, subject string) (*pb.View, *sync.Mutex)
 }
 
 type HealthInference interface {
 	// Infer the health of a subject given a new report
-	Infer(report *Report) (*Inference, error)
+	Infer(report *pb.Report) (*pb.Inference, error)
 
 	// Get the health inference of a subject
-	GetInference(subject EntityId) *Inference
+	GetInference(subject string) *pb.Inference
 
 	// Start the inference service
 	Start() error
@@ -40,23 +41,19 @@ type HealthInference interface {
 	Stop() error
 }
 
-type PingReply struct {
-	Ts time.Time
-}
-
 type HealthExchange interface {
 	// Propagate a report to other peers
-	Propagate(report *Report) error
+	Propagate(report *pb.Report) error
 
 	// Ping one peer and get a response
-	Ping(peer EntityId) (*PingReply, error)
+	Ping(peer string) (*pb.PingReply, error)
 
 	// Ping all peers and get response
-	PingAll() (map[EntityId]*PingReply, error)
+	PingAll() (map[string]*pb.PingReply, error)
 
 	// peer is interested in a particular subject
-	Interested(peer EntityId, subject EntityId) bool
+	Interested(peer string, subject string) bool
 
 	// peer is not interested in a particular subject
-	Uninterested(peer EntityId, subject EntityId) bool
+	Uninterested(peer string, subject string) bool
 }

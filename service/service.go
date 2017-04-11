@@ -28,7 +28,7 @@ type HealthGServer struct {
 	inference dt.HealthInference
 	exchange  dt.HealthExchange
 
-	rch chan *dt.Report
+	rch chan *pb.Report
 	l   net.Listener
 	s   *grpc.Server
 }
@@ -87,10 +87,7 @@ func (self *HealthGServer) Stop(graceful bool) error {
 }
 
 func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
-	report := dt.ReportFromPb(in.Report)
-	if report == nil {
-		return &pb.SubmitReportReply{Result: pb.SubmitReportReply_FAILED}, fmt.Errorf("Fail to parse report")
-	}
+	report := in.Report
 	var result pb.SubmitReportReply_Status
 	rc, err := self.storage.AddReport(report, false) // never ignore local reports
 	switch rc {
@@ -107,10 +104,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 }
 
 func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRequest) (*pb.LearnReportReply, error) {
-	report := dt.ReportFromPb(in.Report)
-	if report == nil {
-		return &pb.LearnReportReply{Result: pb.LearnReportReply_FAILED}, fmt.Errorf("Fail to parse report")
-	}
+	report := in.Report
 	dh.LogD(stag, "learn report about %s from %s at %s", report.Subject, in.Source.Id, in.Source.Addr)
 	var result pb.LearnReportReply_Status
 	rc, err := self.storage.AddReport(report, self.FilterSubmission)
@@ -122,32 +116,31 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 	case store.REPORT_ACCEPTED:
 		result = pb.LearnReportReply_ACCEPTED
 		go self.AnalyzeReport(report)
-		go self.exchange.Interested(dt.EntityId(in.Source.Id), report.Subject)
+		go self.exchange.Interested(in.Source.Id, report.Subject)
 	}
 	return &pb.LearnReportReply{Result: result}, err
 }
 
 func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.GetReportReply, error) {
-	report := self.storage.GetLatestReport(dt.EntityId(in.Subject))
-	return &pb.GetReportReply{Report: dt.ReportToPb(report)}, nil
+	report := self.storage.GetLatestReport(in.Subject)
+	return &pb.GetReportReply{Report: report}, nil
 }
 
 func (self *HealthGServer) GetPanorama(in *pb.GetReportRequest, stream pb.HealthService_GetPanoramaServer) error {
-	subject := dt.EntityId(in.Subject)
-	panorama, l := self.storage.GetPanorama(subject)
+	panorama, l := self.storage.GetPanorama(in.Subject)
 	if panorama == nil || l == nil {
 		return fmt.Errorf("cannot get panorama for %s\n", in.Subject)
 	}
 	var reports []*pb.GetReportReply
 	l.Lock()
 	for observer, view := range panorama.Views {
-		for e := view.Observations.Front(); e != nil; e = e.Next() {
-			report := &dt.Report{
+		for _, ob := range view.Observations {
+			report := &pb.Report{
 				Observer:    observer,
-				Subject:     subject,
-				Observation: e.Value.(*dt.Observation),
+				Subject:     in.Subject,
+				Observation: ob,
 			}
-			reports = append(reports, &pb.GetReportReply{Report: dt.ReportToPb(report)})
+			reports = append(reports, &pb.GetReportReply{Report: report})
 		}
 	}
 	l.Unlock()
@@ -160,18 +153,16 @@ func (self *HealthGServer) GetPanorama(in *pb.GetReportRequest, stream pb.Health
 }
 
 func (self *HealthGServer) GetView(in *pb.GetViewRequest, stream pb.HealthService_GetViewServer) error {
-	subject := dt.EntityId(in.Subject)
-	observer := dt.EntityId(in.Observer)
-	view, l := self.storage.GetView(subject, observer)
+	view, l := self.storage.GetView(in.Subject, in.Observer)
 	var reports []*pb.GetReportReply
 	l.Lock()
-	for e := view.Observations.Front(); e != nil; e = e.Next() {
-		report := &dt.Report{
-			Observer:    observer,
-			Subject:     subject,
-			Observation: e.Value.(*dt.Observation),
+	for _, ob := range view.Observations {
+		report := &pb.Report{
+			Observer:    in.Observer,
+			Subject:     in.Subject,
+			Observation: ob,
 		}
-		reports = append(reports, &pb.GetReportReply{Report: dt.ReportToPb(report)})
+		reports = append(reports, &pb.GetReportReply{Report: report})
 	}
 	l.Unlock()
 	for _, report := range reports {
@@ -183,29 +174,20 @@ func (self *HealthGServer) GetView(in *pb.GetViewRequest, stream pb.HealthServic
 }
 
 func (self *HealthGServer) GetInference(ctx context.Context, in *pb.GetInferenceRequest) (*pb.GetInferenceReply, error) {
-	inference := self.inference.GetInference(dt.EntityId(in.Subject))
+	inference := self.inference.GetInference(in.Subject)
 	if inference == nil {
 		return nil, fmt.Errorf("inference does not exist for view")
 	}
-	observers := make([]string, len(inference.Observers))
-	for i, ob := range inference.Observers {
-		observers[i] = string(ob)
-	}
-	pinfer := &pb.Inference{
-		Subject:     string(inference.Subject),
-		Observers:   observers,
-		Observation: dt.ObservationToPb(inference.Observation),
-	}
-	return &pb.GetInferenceReply{pinfer}, nil
+	return &pb.GetInferenceReply{inference}, nil
 }
 
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	ok := self.storage.AddSubject(dt.EntityId(in.Subject))
+	ok := self.storage.AddSubject(in.Subject)
 	return &pb.ObserveReply{Success: ok}, nil
 }
 
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
-	ok := self.storage.RemoveSubject(dt.EntityId(in.Subject), true)
+	ok := self.storage.RemoveSubject(in.Subject, true)
 	return &pb.ObserveReply{Success: ok}, nil
 }
 
@@ -223,7 +205,7 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 	return &pb.PingReply{Result: pb.PingReply_GOOD, Time: pnow}, nil
 }
 
-func (self *HealthGServer) AnalyzeReport(report *dt.Report) {
+func (self *HealthGServer) AnalyzeReport(report *pb.Report) {
 	self.rch <- report
 	dh.LogD(stag, "sent report for %s for inference", report.Subject)
 	/*

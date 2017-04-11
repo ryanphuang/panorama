@@ -15,11 +15,16 @@ enum Status {
   DEAD = 6;
 }
 
+// A value is a measurement unit of an entity's health
+message Value {
+  Status status = 1; // status for this metric
+  float score = 2; // actual score for this metric
+}
+
 // A metric is a single aspect of an entity's health
 message Metric {
   string name = 1; // name of the metric, e.g., CPU, Network
-  Status status = 2; // status for this metric
-  float score = 3; // actual score for this metric
+  Value value = 2; // value of the metric
 }
 
 // An observation is a collection of a metrics measuring

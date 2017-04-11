@@ -3,6 +3,7 @@ package store
 import (
 	"testing"
 
+	pb "deephealth/build/gen"
 	"deephealth/decision"
 	dt "deephealth/types"
 )
@@ -11,25 +12,25 @@ func TestInfer(t *testing.T) {
 	raw := NewRawHealthStorage("TS_1", "TS_2")
 	var majority decision.SimpleMajorityInference
 	infs := NewHealthInferenceStorage(raw, majority)
-	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
+	metrics := map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_3", metrics)
 	result, err := raw.AddReport(report, false)
 	if err != nil || result != REPORT_ACCEPTED {
 		t.Fatalf("Fail to add report %s", report)
 	}
-	metrics = map[string]dt.Value{"mem": dt.Value{dt.UNHEALTHY, 30}, "cpu": dt.Value{dt.UNHEALTHY, 60}}
+	metrics = map[string]*pb.Value{"mem": &pb.Value{pb.Status_UNHEALTHY, 30}, "cpu": &pb.Value{pb.Status_UNHEALTHY, 60}}
 	report = dt.NewReport("FE_1", "TS_3", metrics)
 	result, err = raw.AddReport(report, false)
 	if err != nil || result != REPORT_ACCEPTED {
 		t.Fatalf("Fail to add report %s", report)
 	}
-	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 70}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 70}}
 	report = dt.NewReport("FE_2", "TS_3", metrics)
 	result, err = raw.AddReport(report, false)
 	if err != nil || result != REPORT_ACCEPTED {
 		t.Fatalf("Fail to add report %s", report)
 	}
-	metrics = map[string]dt.Value{"mem": dt.Value{dt.HEALTHY, 60}, "network": dt.Value{dt.HEALTHY, 70}, "cpu": dt.Value{dt.HEALTHY, 80}}
+	metrics = map[string]*pb.Value{"mem": &pb.Value{pb.Status_HEALTHY, 60}, "network": &pb.Value{pb.Status_HEALTHY, 70}, "cpu": &pb.Value{pb.Status_HEALTHY, 80}}
 	report = dt.NewReport("FE_4", "TS_3", metrics)
 	result, err = raw.AddReport(report, false)
 	if err != nil || result != REPORT_ACCEPTED {
@@ -53,7 +54,7 @@ func TestInfer(t *testing.T) {
 	if !ok {
 		t.Fatalf("Missing metric in inference")
 	}
-	if metric.Status != dt.HEALTHY {
+	if metric.Value.Status != pb.Status_HEALTHY {
 		t.Fatalf("Should infer cpu HEALTHY")
 	}
 	infs.Stop()

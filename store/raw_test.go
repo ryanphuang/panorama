@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	pb "deephealth/build/gen"
+
 	dh "deephealth"
 	dt "deephealth/types"
 )
@@ -13,7 +15,7 @@ import (
 func TestAddSubject(t *testing.T) {
 	dh.SetLogLevel(dh.InfoLevel)
 	store := NewRawHealthStorage("TS_1", "TS_2")
-	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
+	metrics := map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_3", metrics)
 	result, err := store.AddReport(report, true)
 	if err != nil {
@@ -34,8 +36,8 @@ func TestAddSubject(t *testing.T) {
 
 func TestAddReport(t *testing.T) {
 	dh.SetLogLevel(dh.InfoLevel)
-	subjects := []dt.EntityId{"TS_1", "TS_2", "TS_3", "TS_4"}
-	smap := make(map[dt.EntityId]bool)
+	subjects := []string{"TS_1", "TS_2", "TS_3", "TS_4"}
+	smap := make(map[string]bool)
 	for _, s := range subjects {
 		smap[s] = true
 	}
@@ -44,14 +46,14 @@ func TestAddReport(t *testing.T) {
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {
 		t.Logf("Making observation %d", i)
-		metrics := map[string]dt.Value{
-			"cpu":     dt.Value{dt.HEALTHY, 100},
-			"disk":    dt.Value{dt.HEALTHY, 90},
-			"network": dt.Value{dt.UNHEALTHY, 10},
-			"memory":  dt.Value{dt.MAYBE_UNHEALTHY, 30},
+		metrics := map[string]*pb.Value{
+			"cpu":     &pb.Value{pb.Status_HEALTHY, 100},
+			"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+			"network": &pb.Value{pb.Status_UNHEALTHY, 10},
+			"memory":  &pb.Value{pb.Status_MAYBE_UNHEALTHY, 30},
 		}
-		observer := dt.EntityId(fmt.Sprintf("FE_%d", i))
-		subject := dt.EntityId(fmt.Sprintf("TS_%d", i%3))
+		observer := fmt.Sprintf("FE_%d", i)
+		subject := fmt.Sprintf("TS_%d", i%3)
 		report := dt.NewReport(observer, subject, metrics)
 		wg.Add(1)
 		go func() {
@@ -74,10 +76,9 @@ func TestAddReport(t *testing.T) {
 	for subject, stereo := range store.Tenants {
 		t.Logf("=============%s=============", subject)
 		for observer, view := range stereo.Views {
-			t.Logf("%d observations for %s->%s", view.Observations.Len(), observer, subject)
-			for e := view.Observations.Front(); e != nil; e = e.Next() {
-				val := e.Value.(*dt.Observation)
-				t.Logf("|%s| %s %s", observer, val.Ts.Format(time.UnixDate), val.Metrics)
+			t.Logf("%d observations for %s->%s", len(view.Observations), observer, subject)
+			for _, ob := range view.Observations {
+				t.Logf("|%s| %s\n", observer, dt.ObservationString(ob))
 			}
 		}
 	}
@@ -87,16 +88,16 @@ func TestRecentReport(t *testing.T) {
 	dh.SetLogLevel(dh.InfoLevel)
 	store := NewRawHealthStorage("TS_1", "TS_2")
 
-	metrics := map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 100}}
+	metrics := map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
-	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 90}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 90}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
-	metrics = map[string]dt.Value{"cpu": dt.Value{dt.HEALTHY, 70}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 70}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
-	metrics = map[string]dt.Value{"cpu": dt.Value{dt.UNHEALTHY, 30}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{pb.Status_UNHEALTHY, 30}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
 
@@ -108,12 +109,12 @@ func TestRecentReport(t *testing.T) {
 	if !ok {
 		t.Error("The latest report have a CPU metric")
 	}
-	if metric.Status != dt.UNHEALTHY || metric.Score != 30 {
+	if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != 30 {
 		t.Errorf("Wrong metric in the latest report: %s\n", metric)
 	}
 
 	time.Sleep(200 * time.Millisecond)
-	metrics = map[string]dt.Value{"memory": dt.Value{dt.UNHEALTHY, 20}}
+	metrics = map[string]*pb.Value{"memory": &pb.Value{pb.Status_UNHEALTHY, 20}}
 	report = dt.NewReport("FE_4", "TS_1", metrics)
 	store.AddReport(report, true)
 	ret = store.GetLatestReport("TS_1")
@@ -124,15 +125,15 @@ func TestRecentReport(t *testing.T) {
 	if !ok {
 		t.Error("The latest report have a memory metric")
 	}
-	if metric.Status != dt.UNHEALTHY || metric.Score != 20 {
+	if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != 20 {
 		t.Errorf("Wrong metric in the latest report: %s\n", metric)
 	}
 
 	time.Sleep(200 * time.Millisecond)
-	metrics = map[string]dt.Value{"network": dt.Value{dt.HEALTHY, 80}}
+	metrics = map[string]*pb.Value{"network": &pb.Value{pb.Status_HEALTHY, 80}}
 	report = dt.NewReport("FE_5", "TS_1", metrics)
 	store.AddReport(report, true)
-	metrics = map[string]dt.Value{"memory": dt.Value{dt.HEALTHY, 70}}
+	metrics = map[string]*pb.Value{"memory": &pb.Value{pb.Status_HEALTHY, 70}}
 	report = dt.NewReport("FE_1", "TS_1", metrics)
 	store.AddReport(report, true)
 	ret = store.GetLatestReport("TS_1")
@@ -143,7 +144,7 @@ func TestRecentReport(t *testing.T) {
 	if !ok {
 		t.Error("The latest report have a memory metric")
 	}
-	if metric.Status != dt.HEALTHY || metric.Score != 70 {
+	if metric.Value.Status != pb.Status_HEALTHY || metric.Value.Score != 70 {
 		t.Errorf("Wrong metric in the latest report: %s\n", metric)
 	}
 }
