@@ -23,7 +23,7 @@ var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 
 func main() {
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s [options] ID\n", os.Args[0])
+		fmt.Printf("Usage: %s [options] [ID]\n", os.Args[0])
 		flag.PrintDefaults()
 	}
 

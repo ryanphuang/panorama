@@ -25,8 +25,8 @@ var client pb.HealthServiceClient
 
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 var (
-	remote = flag.Bool("remote", false, "whether to perform remote service test or not")
-	faddr  = flag.String("addr", "localhost:30000", "use this address instead of localhost")
+	faddr  = flag.String("addr", "", "use this address instead of localhost")
+	create = flag.Bool("create", true, "whether to create service ourselves or not")
 )
 
 func TestSubmitReport(t *testing.T) {
@@ -61,9 +61,14 @@ func TestMain(m *testing.M) {
 	var addr string
 
 	var config *dt.HealthServerConfig
-	if !*remote {
+	if len(*faddr) == 0 {
 		port := portstart + int(r.Intn(portend-portstart))
 		addr = fmt.Sprintf("localhost:%d", port)
+	} else {
+		addr = *faddr
+	}
+
+	if *create {
 		subjects := []string{"TS_1", "TS_2", "TS_3", "TS_4"}
 		config = &dt.HealthServerConfig{
 			Addr:     addr,
@@ -71,8 +76,10 @@ func TestMain(m *testing.M) {
 			Subjects: subjects,
 		}
 		dh.SetLogLevel(dh.ErrorLevel)
-	} else {
-		addr = *faddr
+		gs := NewHealthGServer(config)
+		errch := make(chan error)
+		gs.Start(errch)
+		time.Sleep(3)
 	}
 
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -81,12 +88,6 @@ func TestMain(m *testing.M) {
 	}
 	defer conn.Close()
 	client = pb.NewHealthServiceClient(conn)
-	if !*remote {
-		gs := NewHealthGServer(config)
-		errch := make(chan error)
-		gs.Start(errch)
-	}
-	time.Sleep(3)
 
 	os.Exit(m.Run())
 }
