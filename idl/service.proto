@@ -22,8 +22,14 @@ service HealthService {
 	// Learn a report from a peer 
   rpc LearnReport(LearnReportRequest) returns (LearnReportReply) {}
 
-	// Query the latest health report of an entity
+	// Query the latest raw health report of an entity
   rpc GetLatestReport(GetReportRequest) returns (GetReportReply) {}
+
+	// Query all raw health report of an entity
+  rpc GetPanorama(GetReportRequest) returns (stream GetReportReply) {}
+
+	// Query all raw health report of an entity
+  rpc GetView(GetViewRequest) returns (stream GetReportReply) {}
 
   // ping request to test liveness of a health server
   rpc Ping(PingRequest) returns (PingReply) {}
@@ -67,6 +73,11 @@ message SubmitReportReply {
     FAILED = 2;
   }
   Status result = 1;
+}
+
+message GetViewRequest {
+  string subject = 1;
+  string observer = 2;
 }
 
 message GetReportRequest {

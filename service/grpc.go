@@ -132,6 +132,56 @@ func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReport
 	return &pb.GetReportReply{Report: dt.ReportToPb(report)}, nil
 }
 
+func (self *HealthGServer) GetPanorama(in *pb.GetReportRequest, stream pb.HealthService_GetPanoramaServer) error {
+	subject := dt.EntityId(in.Subject)
+	panorama, l := self.storage.GetPanorama(subject)
+	if panorama == nil || l == nil {
+		return fmt.Errorf("cannot get panorama for %s\n", in.Subject)
+	}
+	var reports []*pb.GetReportReply
+	l.Lock()
+	for observer, view := range panorama.Views {
+		for e := view.Observations.Front(); e != nil; e = e.Next() {
+			report := &dt.Report{
+				Observer:    observer,
+				Subject:     subject,
+				Observation: e.Value.(*dt.Observation),
+			}
+			reports = append(reports, &pb.GetReportReply{Report: dt.ReportToPb(report)})
+		}
+	}
+	l.Unlock()
+	for _, report := range reports {
+		if err := stream.Send(report); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (self *HealthGServer) GetView(in *pb.GetViewRequest, stream pb.HealthService_GetViewServer) error {
+	subject := dt.EntityId(in.Subject)
+	observer := dt.EntityId(in.Observer)
+	view, l := self.storage.GetView(subject, observer)
+	var reports []*pb.GetReportReply
+	l.Lock()
+	for e := view.Observations.Front(); e != nil; e = e.Next() {
+		report := &dt.Report{
+			Observer:    observer,
+			Subject:     subject,
+			Observation: e.Value.(*dt.Observation),
+		}
+		reports = append(reports, &pb.GetReportReply{Report: dt.ReportToPb(report)})
+	}
+	l.Unlock()
+	for _, report := range reports {
+		if err := stream.Send(report); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.AddSubject(dt.EntityId(in.Subject))
 	return &pb.ObserveReply{Success: ok}, nil
