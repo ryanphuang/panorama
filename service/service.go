@@ -97,9 +97,9 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		result = pb.SubmitReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
+		go self.AnalyzeReport(report)
+		go self.exchange.Propagate(report)
 	}
-	go self.AnalyzeReport(report)
-	go self.exchange.Propagate(report)
 	return &pb.SubmitReportReply{Result: result}, err
 }
 
