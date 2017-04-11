@@ -51,9 +51,9 @@ func main() {
 		inc_s = true
 	}
 	rc := new(dt.HealthServerConfig)
-	rc.Peers = make(map[dt.EntityId]string)
+	rc.Peers = make(map[string]string)
 	for i := 0; i < *nserver; i++ {
-		eid := dt.EntityId(fmt.Sprintf("HS_%d", i+1))
+		eid := fmt.Sprintf("HS_%d", i+1)
 		if *localhost {
 			rc.Peers[eid] = fmt.Sprintf("localhost:%d", p)
 		} else {

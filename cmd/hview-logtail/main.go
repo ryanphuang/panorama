@@ -140,7 +140,7 @@ func reportEvent(client pb.HealthServiceClient, event *Event) error {
 		fmt.Printf("report for %s is too frequent, skip\n", event.subject)
 		return nil
 	}
-	observation := dt.NewPbObservationSingleMetric(event.ts, event.context, pb.Status_UNHEALTHY, 20)
+	observation := dt.NewObservationSingleMetric(event.ts, event.context, pb.Status_UNHEALTHY, 20)
 	report := &pb.Report{
 		Observer:    event.id,
 		Subject:     event.subject,

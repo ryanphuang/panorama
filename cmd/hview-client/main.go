@@ -15,8 +15,6 @@ import (
 	"google.golang.org/grpc"
 
 	pb "deephealth/build/gen"
-	"deephealth/client"
-	"deephealth/store"
 	dt "deephealth/types"
 )
 
@@ -31,35 +29,28 @@ const (
 `
 )
 
-var (
-	g = flag.Bool("grpc", true, "use grpc service client")
-)
-
 func logError(e error) {
 	fmt.Fprintln(os.Stderr, e)
 }
 
-var observer dt.EntityId
+var observer string
 
-type uclient struct {
-	nc *client.NClient
-	gc pb.HealthServiceClient
-}
+var client pb.HealthServiceClient
 
-func parseReport(args []string) *dt.Report {
+func parseReport(args []string) *pb.Report {
 	var score float64
 	var metric string
-	var status dt.Status
+	var status pb.Status
 	var err error
 
-	subject := dt.EntityId(args[1])
+	subject := args[1]
 	observation := dt.NewObservation(time.Now())
 	for i := 2; i < len(args); i++ {
 		parts := strings.Split(args[i], ":")
 		if len(parts) == 3 {
 			metric = parts[0]
 			status = dt.StatusFromStr(parts[1])
-			if status == dt.INVALID {
+			if status == pb.Status_INVALID {
 				logError(fmt.Errorf("invalid health metric %s\n", args[i]))
 				break
 			}
@@ -68,103 +59,67 @@ func parseReport(args []string) *dt.Report {
 				logError(fmt.Errorf("invalid health metric %s\n", args[i]))
 				break
 			}
-			observation.AddMetric(metric, status, float32(score))
+			dt.AddMetric(observation, metric, status, float32(score))
 		} else {
 			logError(fmt.Errorf("invalid health metric %s\n", args[i]))
 			break
 		}
 	}
 	if len(observer) == 0 {
-		observer = dt.EntityId("XFE_0") // default observer
+		observer = "XFE_0" // default observer
 	}
-	return &dt.Report{
+	return &pb.Report{
 		Observer:    observer,
 		Subject:     subject,
 		Observation: observation,
 	}
 }
 
-func runCmd(u *uclient, args []string) bool {
-	var subject dt.EntityId
-	var report dt.Report
-	var err error
-	var ret int
-
+func runCmd(args []string) bool {
 	cmd := args[0]
 	switch cmd {
 	case "ping":
-		if u.nc != nil {
-			err = fmt.Errorf("not implemented")
-		} else {
-			now := time.Now()
-			pnow, err := ptypes.TimestampProto(now)
+		now := time.Now()
+		pnow, err := ptypes.TimestampProto(now)
+		if err == nil {
+			request := &pb.PingRequest{Source: &pb.Peer{string(observer), "localhost"}, Time: pnow}
+			reply, err := client.Ping(context.Background(), request)
 			if err == nil {
-				request := &pb.PingRequest{Source: &pb.Peer{string(observer), "localhost"}, Time: pnow}
-				reply, err := u.gc.Ping(context.Background(), request)
+				t, err := ptypes.Timestamp(reply.Time)
 				if err == nil {
-					t, err := ptypes.Timestamp(reply.Time)
-					if err == nil {
-						fmt.Println("ping reply at time %s", t)
-					}
+					fmt.Println("ping reply at time %s", t)
 				}
 			}
-			if err != nil {
-				logError(err)
-			}
+		}
+		if err != nil {
+			logError(err)
 		}
 	case "report":
 		r := parseReport(args)
-		if u.nc != nil {
-			err = u.nc.SubmitReport(r, &ret)
-			switch ret {
-			case store.REPORT_ACCEPTED:
-				fmt.Println("Accepted")
-			case store.REPORT_IGNORED:
-				fmt.Println("Ignored")
-			case store.REPORT_FAILED:
-				fmt.Println("Failed")
-			}
-			if err != nil {
-				logError(err)
-			}
-		} else {
-			pbr := dt.ReportToPb(r)
-			reply, err := u.gc.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: pbr})
-			switch reply.Result {
-			case pb.SubmitReportReply_ACCEPTED:
-				fmt.Println("Accepted")
-			case pb.SubmitReportReply_IGNORED:
-				fmt.Println("Ignored")
-			case pb.SubmitReportReply_FAILED:
-				fmt.Println("Failed")
-			}
-			if err != nil {
-				logError(err)
-			}
+		reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: r})
+		switch reply.Result {
+		case pb.SubmitReportReply_ACCEPTED:
+			fmt.Println("Accepted")
+		case pb.SubmitReportReply_IGNORED:
+			fmt.Println("Ignored")
+		case pb.SubmitReportReply_FAILED:
+			fmt.Println("Failed")
+		}
+		if err != nil {
+			logError(err)
 		}
 	case "get":
-		if u.nc != nil {
-			subject = dt.EntityId(args[1])
-			err = u.nc.GetLatestReport(subject, &report)
-			if err == nil {
-				fmt.Println(report)
-			} else {
-				logError(err)
-			}
+		reply, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[1]})
+		if err == nil {
+			fmt.Println(reply.Report)
 		} else {
-			reply, err := u.gc.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[1]})
-			if err == nil {
-				rp := dt.ReportFromPb(reply.Report)
-				fmt.Println(*rp)
-			} else {
-				logError(err)
-			}
+			logError(err)
 		}
 	case "me":
 		if len(args) == 1 {
 			fmt.Println(observer)
 		} else {
-			observer = dt.EntityId(args[1])
+			observer = args[1]
 		}
 	case "help":
 		fmt.Println(cmdHelp)
@@ -176,7 +131,7 @@ func runCmd(u *uclient, args []string) bool {
 	return false
 }
 
-func runPrompt(u *uclient) {
+func runPrompt() {
 	scanner := bufio.NewScanner(os.Stdin)
 
 	fmt.Print("> ")
@@ -185,7 +140,7 @@ func runPrompt(u *uclient) {
 		line := scanner.Text()
 		args := fields(line)
 		if len(args) > 0 {
-			if runCmd(u, args) {
+			if runCmd(args) {
 				break
 			}
 		}
@@ -219,22 +174,16 @@ func main() {
 	addr := args[0]
 	cmdArgs := args[1:]
 
-	var u uclient
-
-	if *g {
-		conn, err := grpc.Dial(addr, grpc.WithInsecure())
-		if err != nil {
-			panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
-		}
-		defer conn.Close()
-		u.gc = pb.NewHealthServiceClient(conn)
-	} else {
-		u.nc = client.NewClient(addr, false)
+	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	if err != nil {
+		panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
 	}
+	defer conn.Close()
+	client = pb.NewHealthServiceClient(conn)
 	if len(cmdArgs) == 0 {
-		runPrompt(&u)
+		runPrompt()
 		fmt.Println()
 	} else {
-		runCmd(&u, cmdArgs)
+		runCmd(cmdArgs)
 	}
 }

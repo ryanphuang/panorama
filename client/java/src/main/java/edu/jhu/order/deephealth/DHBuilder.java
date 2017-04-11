@@ -8,7 +8,7 @@ import com.google.protobuf.util.Timestamps;
 public final class DHBuilder {
 
   public static Health.Metric NewMetric(String name, Health.Status status, float score) {
-    return Health.Metric.newBuilder().setName(name).setStatus(status).setScore(score).build();
+    return Health.Metric.newBuilder().setName(name).setValue(Health.Value.newBuilder().setStatus(status).setScore(score).build()).build();
   }
 
   public static Map<String, Health.Metric> NewMetrics(String...names) {

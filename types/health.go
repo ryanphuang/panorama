@@ -89,3 +89,22 @@ func ObservationString(ob *pb.Observation) string {
 	buf.WriteString("}")
 	return buf.String()
 }
+
+func StatusFromStr(status string) pb.Status {
+	switch status {
+	case "n":
+		return pb.Status_NA
+	case "u":
+		return pb.Status_UNHEALTHY
+	case "h":
+		return pb.Status_HEALTHY
+	case "m":
+		return pb.Status_MAYBE_UNHEALTHY
+	case "d":
+		return pb.Status_DYING
+	case "dd":
+		return pb.Status_DEAD
+	default:
+		return pb.Status_INVALID
+	}
+}

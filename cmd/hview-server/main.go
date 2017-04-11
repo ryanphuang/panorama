@@ -15,7 +15,6 @@ import (
 var (
 	rc        = flag.String("config", "", "use config file to initialize service")
 	addr      = flag.String("addr", "localhost", "server listen address")
-	grpc      = flag.Bool("grpc", true, "use grpc service implementation")
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend   = flag.Int("port_end", 30000, "end of port range for a random port")
 )
@@ -56,25 +55,19 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
-		subjects := make([]dt.EntityId, 100)
+		subjects := make([]string, 100)
 		for i := 1; i <= 100; i++ {
-			subjects[i-1] = dt.EntityId(fmt.Sprintf("TS_%d", i))
+			subjects[i-1] = fmt.Sprintf("TS_%d", i)
 		}
 		config = &dt.HealthServerConfig{
 			Addr:     faddr,
-			Id:       dt.EntityId(args[0]),
+			Id:       args[0],
 			Subjects: subjects,
 		}
 	}
 	fmt.Printf("Starting health service at %s with config %s\n", config.Addr, config)
-	if *grpc {
-		gs := service.NewHealthGServer(config)
-		errch := make(chan error)
-		gs.Start(errch)
-		<-errch
-	} else {
-		ns := service.NewHealthNServer(config)
-		ns.Start()
-		ns.WaitForDone()
-	}
+	gs := service.NewHealthGServer(config)
+	errch := make(chan error)
+	gs.Start(errch)
+	<-errch
 }
