@@ -64,8 +64,11 @@ func (self *HealthInferenceStorage) Infer(report *dt.Report) (*dt.Inference, err
 
 func (self *HealthInferenceStorage) GetInference(subject dt.EntityId) *dt.Inference {
 	self.mu.Lock()
-	inference := self.Results[subject]
+	inference, ok := self.Results[subject]
 	self.mu.Unlock()
+	if !ok {
+		return nil
+	}
 	return inference
 }
 

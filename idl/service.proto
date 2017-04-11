@@ -31,6 +31,9 @@ service HealthService {
 	// Query all raw health report of an entity
   rpc GetView(GetViewRequest) returns (stream GetReportReply) {}
 
+	// Query all raw health report of an entity
+  rpc GetInference(GetInferenceRequest) returns (GetInferenceReply) {}
+
   // ping request to test liveness of a health server
   rpc Ping(PingRequest) returns (PingReply) {}
 }
@@ -86,6 +89,14 @@ message GetReportRequest {
 
 message GetReportReply {
   Report report = 1;
+}
+
+message GetInferenceRequest {
+  string subject = 1;
+}
+
+message GetInferenceReply {
+  Inference inference = 1;
 }
 
 message PingRequest {

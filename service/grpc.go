@@ -182,6 +182,23 @@ func (self *HealthGServer) GetView(in *pb.GetViewRequest, stream pb.HealthServic
 	return nil
 }
 
+func (self *HealthGServer) GetInference(ctx context.Context, in *pb.GetInferenceRequest) (*pb.GetInferenceReply, error) {
+	inference := self.inference.GetInference(dt.EntityId(in.Subject))
+	if inference == nil {
+		return nil, fmt.Errorf("inference does not exist for view")
+	}
+	observers := make([]string, len(inference.Observers))
+	for i, ob := range inference.Observers {
+		observers[i] = string(ob)
+	}
+	pinfer := &pb.Inference{
+		Subject:     string(inference.Subject),
+		Observers:   observers,
+		Observation: dt.ObservationToPb(inference.Observation),
+	}
+	return &pb.GetInferenceReply{pinfer}, nil
+}
+
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.AddSubject(dt.EntityId(in.Subject))
 	return &pb.ObserveReply{Success: ok}, nil

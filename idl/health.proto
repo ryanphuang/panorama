@@ -48,3 +48,10 @@ message Panorama {
   string subject = 1;  // the entity whose health information is stored
   map<string, View> views = 2; // various observers' reports about the subject
 }
+
+// An inference is a merged result of different views about the same subject
+message Inference {
+	string subject = 1;  // the entity whose health inference is about 
+  repeated string observers = 2; // the set of entities from whom the status was computed from
+  Observation observation = 3; // the observation that reflects an entity's health
+}
