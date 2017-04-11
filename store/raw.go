@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	dh "deephealth"
@@ -196,11 +197,6 @@ func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 func (self *RawHealthStorage) Dump() {
 	for subject, panorama := range self.Tenants {
 		fmt.Printf("=============%s=============\n", subject)
-		for observer, view := range panorama.Views {
-			fmt.Printf("%d observations for %s->%s\n", len(view.Observations), observer, subject)
-			for _, ob := range view.Observations {
-				fmt.Printf("|%s| %s\n", observer, dt.ObservationString(ob))
-			}
-		}
+		dt.DumpPanorama(os.Stdout, panorama)
 	}
 }

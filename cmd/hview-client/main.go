@@ -135,7 +135,7 @@ func runCmd(args []string) bool {
 			}
 			view, err := client.GetView(context.Background(), &pb.GetViewRequest{Observer: args[2], Subject: args[3]})
 			if err == nil {
-				fmt.Println(view)
+				dt.DumpView(os.Stdout, view)
 				return false
 			} else {
 				logError(err)
@@ -147,7 +147,19 @@ func runCmd(args []string) bool {
 			}
 			pano, err := client.GetPanorama(context.Background(), &pb.GetPanoramaRequest{Subject: args[2]})
 			if err == nil {
-				fmt.Println(pano)
+				dt.DumpPanorama(os.Stdout, pano)
+				return false
+			} else {
+				logError(err)
+			}
+		case "inference":
+			if len(args) != 3 {
+				fmt.Println(cmdHelp)
+				return false
+			}
+			inference, err := client.GetInference(context.Background(), &pb.GetInferenceRequest{Subject: args[2]})
+			if err == nil {
+				fmt.Println(dt.InferenceString(inference))
 				return false
 			} else {
 				logError(err)

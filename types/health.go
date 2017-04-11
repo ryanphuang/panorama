@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"time"
 
 	pb "deephealth/build/gen"
@@ -88,6 +89,43 @@ func ObservationString(ob *pb.Observation) string {
 	}
 	buf.WriteString("}")
 	return buf.String()
+}
+
+func DumpPanorama(w io.Writer, pano *pb.Panorama) {
+	for observer, view := range pano.Views {
+		fmt.Fprintf(w, "[[... %s->%s (%d observations) ...]]\n", observer, pano.Subject, len(view.Observations))
+		DumpView(w, view)
+	}
+}
+
+func DumpView(w io.Writer, view *pb.View) {
+	for _, ob := range view.Observations {
+		fmt.Fprintf(w, "  |%s| %s\n", view.Observer, ObservationString(ob))
+	}
+}
+
+func PanoramaString(pano *pb.Panorama) string {
+	var buf bytes.Buffer
+	for observer, view := range pano.Views {
+		buf.WriteString(fmt.Sprintf("[[... %s->%s (%d observations) ...]]\n", observer, pano.Subject, len(view.Observations)))
+		buf.WriteString(ViewString(view))
+	}
+	return buf.String()
+}
+
+func ViewString(view *pb.View) string {
+	var buf bytes.Buffer
+	for i, ob := range view.Observations {
+		buf.WriteString(fmt.Sprintf("\t|%s| %s", view.Observer, ObservationString(ob)))
+		if i != len(view.Observations)-1 {
+			buf.WriteString("\n")
+		}
+	}
+	return buf.String()
+}
+
+func InferenceString(inf *pb.Inference) string {
+	return fmt.Sprintf("%s ==> %s: %s", inf.Observers, inf.Subject, ObservationString(inf.Observation))
 }
 
 func StatusFromStr(status string) pb.Status {
