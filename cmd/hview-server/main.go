@@ -55,14 +55,9 @@ func main() {
 			flag.Usage()
 			os.Exit(1)
 		}
-		subjects := make([]string, 100)
-		for i := 1; i <= 100; i++ {
-			subjects[i-1] = fmt.Sprintf("TS_%d", i)
-		}
 		config = &dt.HealthServerConfig{
-			Addr:     faddr,
-			Id:       args[0],
-			Subjects: subjects,
+			Addr: faddr,
+			Id:   args[0],
 		}
 	}
 	fmt.Printf("Starting health service at %s with config %s\n", config.Addr, config)
