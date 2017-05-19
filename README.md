@@ -1,8 +1,8 @@
-# Deep Health Check to Detect Gray Failure
+# Deep and Collaborative Health Check to Detect Gray Failure
 
 ## Generate health server config
 
-`$ hview-mkrc -fix_port 6688 -nserver 10 -addressp pano%d -namep HS_%d -id HS_1`
+`$ hview-mkrc -fix_port 6688 -nserver 10 -addressp pano%d -namep HS_%d -id HS_1 -filter -subjectTS_1,TS_2,TS_3`
 
 produces
 
@@ -10,7 +10,11 @@ produces
 {
     "Addr": "pano0:6688",
     "Id": "HS_1",
-    "Subjects": null,
+    "Subjects": [
+        "TS_1",
+        "TS_2",
+        "TS_3"
+    ],
     "Peers": {
         "HS_1": "pano0:6688",
         "HS_10": "pano9:6688",
@@ -23,7 +27,7 @@ produces
         "HS_8": "pano7:6688",
         "HS_9": "pano8:6688"
     },
-    "FilterSubmission": false
+    "FilterSubmission": true
 }
 ```
 

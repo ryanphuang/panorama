@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"strings"
 	"time"
 
 	dh "deephealth"
@@ -21,6 +22,8 @@ var (
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend   = flag.Int("port_end", 30000, "end of port range for a random port")
 	fixport   = flag.Int("fix_port", -1, "fix port instead of random port number")
+	subjects  = flag.String("subjects", "", "comma separated list of subjects to watch for health,\neffective only when FilterSubmission is true")
+	filter    = flag.Bool("filter", false, "whether to filter health reports based on subjects")
 	output    = flag.String("output", "", "file path to output the generated RC")
 )
 
@@ -74,6 +77,10 @@ func main() {
 	}
 	rc.Id = *id
 	rc.Addr = addr
+	rc.FilterSubmission = *filter
+	if len(*subjects) > 0 {
+		rc.Subjects = strings.Split(*subjects, ",")
+	}
 	if len(*output) > 0 {
 		rc.Save(*output)
 	}
