@@ -175,18 +175,28 @@ func main() {
 			text := scanner.Text()
 			if len(text) > 0 {
 				parts := strings.Split(text, "=")
+				fmt.Println(parts)
 				if len(parts) != 2 {
-					fmt.Println("Ensemble file should have IP:ID format")
+					fmt.Println("Ensemble file should have server.ID=ADDRESS format")
 					os.Exit(1)
 				}
-				ip := net.ParseIP(parts[1])
+				if !strings.HasPrefix(parts[0], "server.") {
+					fmt.Println("Ensemble file should have server.ID=ADDRESS format")
+					os.Exit(1)
+				}
+				eid := "peer@" + parts[0][7:len(parts[0])]
+				addr_str := strings.Split(parts[1], ":")[0]
+				ip := net.ParseIP(addr_str)
 				if ip == nil {
-					sips, err := net.LookupIP(parts[1])
+					sips, err := net.LookupIP(addr_str)
 					if err == nil {
-						ipEntities[sips[0].String()] = parts[0]
+						ipEntities[sips[0].String()] = eid
+					} else {
+						fmt.Println("Invalid address " + addr_str)
+						os.Exit(1)
 					}
 				} else {
-					ipEntities[parts[1]] = parts[0]
+					ipEntities[addr_str] = eid
 				}
 			}
 		}
@@ -204,7 +214,7 @@ func main() {
 		panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
 	}
 	defer conn.Close()
-	client := pb.NewHealthServiceClient(conn)
+	// client := pb.NewHealthServiceClient(conn)
 
 	t, _ := tail.TailFile(log, tail.Config{Follow: true})
 	for line := range t.Lines {
@@ -216,7 +226,8 @@ func main() {
 					continue
 				}
 			*/
-			reportEvent(client, event)
+			fmt.Println(event)
+			// reportEvent(client, event)
 		}
 	}
 }
