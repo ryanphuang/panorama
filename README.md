@@ -73,13 +73,15 @@ observer:"TS_1" subject:"TS_2" observation:<ts:<seconds:1495181595 nanos:3857673
 On the server side, we can tail the server log `dhs.log`, which if successful may
 produce something like this:
 
-> 2017-05-19T08:13:15Z[DEBUG] raw.go:89: add report for TS_2 from TS_1...
-> 2017-05-19T08:13:15Z[DEBUG] raw.go:114: create view for TS_1->TS_2...
-> 2017-05-19T08:13:15Z[DEBUG] raw.go:117: add observation to view TS_1->TS_2: 2017-05-19T08:13:15.385767379Z { snapshot: UNHEALTHY, 30.0; }
-> 2017-05-19T08:13:15Z[DEBUG] service.go:173: sent report for TS_2 for inference
-> 2017-05-19T08:13:15Z[DEBUG] inference.go:82: received report for TS_2 for inference
-> 2017-05-19T08:13:15Z[DEBUG] majority.go:55: score sum for snap is 30.000000
-> 2017-05-19T08:13:15Z[DEBUG] inference.go:60: inference result for TS_2: 2017-05-19T08:13:15.387037413Z { snapshot: UNHEALTHY, 30.0; }
+```
+2017-05-19T08:13:15Z[DEBUG] raw.go:89: add report for TS_2 from TS_1...
+2017-05-19T08:13:15Z[DEBUG] raw.go:114: create view for TS_1->TS_2...
+2017-05-19T08:13:15Z[DEBUG] raw.go:117: add observation to view TS_1->TS_2: 2017-05-19T08:13:15.385767379Z { snapshot: UNHEALTHY, 30.0; }
+2017-05-19T08:13:15Z[DEBUG] service.go:173: sent report for TS_2 for inference
+2017-05-19T08:13:15Z[DEBUG] inference.go:82: received report for TS_2 for inference
+2017-05-19T08:13:15Z[DEBUG] majority.go:55: score sum for snap is 30.000000
+2017-05-19T08:13:15Z[DEBUG] inference.go:60: inference result for TS_2: 2017-05-19T08:13:15.387037413Z { snapshot: UNHEALTHY, 30.0; }
+```
 
 ## Using the log monitor tool to participate in deep health reporting
 `$ hview-logtail pano3:6688 ~/software/zookeeper/zookeeper.out ensemble.cfg`
