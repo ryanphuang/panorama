@@ -11,10 +11,13 @@ import (
 )
 
 var (
+	tag       = "hview-mkrc"
+	id        = flag.String("id", "", "name id of this server, must be one of the peers")
 	nserver   = flag.Int("nserver", 3, "number of hview server")
 	localhost = flag.Bool("localhost", true, "whether all servers are localhost")
-	serverp   = flag.String("serverp", "10.10.2.%d", "pattern of server address")
-	sidstart  = flag.Int("sidstart", 1, "start of the server id in server pattern")
+	addressp  = flag.String("addressp", "", "pattern of server address, e.g., 10.10.2.%d")
+	namep     = flag.String("namep", "HS_%d", "pattern of server name, e.g., HS_%d")
+	sidstart  = flag.Int("sidstart", 0, "start of the server id in server pattern")
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend   = flag.Int("port_end", 30000, "end of port range for a random port")
 	fixport   = flag.Int("fix_port", -1, "fix port instead of random port number")
@@ -27,37 +30,36 @@ func main() {
 	flag.Parse()
 	var p, s int
 	var inc_p, inc_s bool
+	if len(*id) == 0 {
+		dh.LogF(tag, "Must specify the name id of this server")
+	}
 	if *fixport > 0 {
 		p = *fixport
 		inc_p = false
 	} else {
 		if *portstart <= 0 || *portend <= 0 {
-			dh.LogF("%s", "Port range must be positive")
+			dh.LogF(tag, "Port range must be positive")
 		}
 		if *portstart > *portend {
-			dh.LogF("%s", "Port start must not exceed port end")
+			dh.LogF(tag, "Port start must not exceed port end")
 		}
 		p = *portstart + int(r.Intn(*portend-*portstart))
 		inc_p = true
 	}
-	if *localhost {
-		s = 0
-		inc_s = false
-	} else {
-		if *sidstart < 0 {
-			dh.LogF("%s", "Server id must be positive")
-		}
-		s = *sidstart
-		inc_s = true
+	if *sidstart < 0 {
+		dh.LogF(tag, "Server id must be positive")
 	}
+	s = *sidstart
+	inc_s = len(*addressp) > 0
+
 	rc := new(dt.HealthServerConfig)
 	rc.Peers = make(map[string]string)
 	for i := 0; i < *nserver; i++ {
-		eid := fmt.Sprintf("HS_%d", i+1)
-		if *localhost {
-			rc.Peers[eid] = fmt.Sprintf("localhost:%d", p)
+		eid := fmt.Sprintf(*namep, i+1)
+		if len(*addressp) > 0 {
+			rc.Peers[eid] = fmt.Sprintf(*addressp+":%d", s, p)
 		} else {
-			rc.Peers[eid] = fmt.Sprintf(*serverp+":%d", s, p)
+			rc.Peers[eid] = fmt.Sprintf("localhost:%d", p)
 		}
 		if inc_p {
 			p++
@@ -66,8 +68,14 @@ func main() {
 			s++
 		}
 	}
+	addr, ok := rc.Peers[*id]
+	if !ok {
+		dh.LogF(tag, "%s is not one of the peers %v", *id, rc.Peers)
+	}
+	rc.Id = *id
+	rc.Addr = addr
 	if len(*output) > 0 {
 		rc.Save(*output)
 	}
-	fmt.Printf("%s\n", rc.String())
+	fmt.Println(rc.String())
 }
