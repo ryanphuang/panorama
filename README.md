@@ -44,6 +44,11 @@ the hostname or just `localhost`),
 Note that the service will run in the foreground. Support for a daemon service is in the TODO list. 
 But a simple way is just to start with `hview-server -addr pano0 DHS_1 > dhs.log 2>&1 &`
 
+To start a deep health service with multiple participating peers, use the configuration
+file generated before:
+
+`$ hview-server -config hs.cfg`
+
 ## Starting deep health client
 
 To start an interactive deep health client, run
