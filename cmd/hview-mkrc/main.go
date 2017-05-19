@@ -17,7 +17,7 @@ var (
 	nserver   = flag.Int("nserver", 3, "number of hview server")
 	localhost = flag.Bool("localhost", true, "whether all servers are localhost")
 	addressp  = flag.String("addressp", "", "pattern of server address, e.g., 10.10.2.%d")
-	namep     = flag.String("namep", "HS_%d", "pattern of server name, e.g., HS_%d")
+	namep     = flag.String("namep", "DHS_%d", "pattern of server name, e.g., DHS_%d")
 	sidstart  = flag.Int("sidstart", 0, "start of the server id in server pattern")
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend   = flag.Int("port_end", 30000, "end of port range for a random port")
