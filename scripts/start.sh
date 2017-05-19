@@ -2,7 +2,7 @@
 
 if [ $# -ne 1 ];then
   echo "Usage: $0 CONFIG"
-  exit 0
+  exit 1
 fi
 
 config=$1
