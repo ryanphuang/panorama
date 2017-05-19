@@ -65,4 +65,6 @@ func main() {
 	errch := make(chan error)
 	gs.Start(errch)
 	<-errch
+	fmt.Println("Encountered error, exit.")
+	os.Exit(1)
 }
