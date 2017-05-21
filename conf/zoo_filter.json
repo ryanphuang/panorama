@@ -1,0 +1,9 @@
+{
+    "TagContextPattern": {
+        "LearnerHandler-/": "^Slow serializing node .*$",
+        "RecvWorker": "",
+        "SendWorker": "",
+        "Snapshot Thread": "^Slow serializing node .*$",
+        "SyncThread": "^Too busy to snap, skipping.*$"
+    }
+}
