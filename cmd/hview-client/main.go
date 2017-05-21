@@ -18,11 +18,17 @@ import (
 	dt "deephealth/types"
 )
 
+var (
+	server = flag.String("server", "localhost:6688", "Address of health server to report events to (Required)")
+)
+
 const (
 	cmdHelp = `Command list:
 	 me observer
 	 report subject [<metric:status:score...>]
-	 get [report|view|panorama] [observer] subject 
+	 get [report|view|inference|panorama] [observer] subject 
+	 list [subject]
+	 dump [inference|panorama]
 	 ping
 	 help
 	 exit
@@ -36,6 +42,8 @@ func logError(e error) {
 var observer string
 
 var client pb.HealthServiceClient
+
+var empty pb.Empty
 
 func parseReport(args []string) *pb.Report {
 	var score float64
@@ -79,21 +87,23 @@ func runCmd(args []string) bool {
 	cmd := args[0]
 	switch cmd {
 	case "ping":
-		now := time.Now()
-		pnow, err := ptypes.TimestampProto(now)
-		if err == nil {
-			request := &pb.PingRequest{Source: &pb.Peer{string(observer), "localhost"}, Time: pnow}
-			reply, err := client.Ping(context.Background(), request)
+		{
+			now := time.Now()
+			pnow, err := ptypes.TimestampProto(now)
 			if err == nil {
-				t, err := ptypes.Timestamp(reply.Time)
+				request := &pb.PingRequest{Source: &pb.Peer{string(observer), "localhost"}, Time: pnow}
+				reply, err := client.Ping(context.Background(), request)
 				if err == nil {
-					fmt.Println("ping reply at time %s", t)
+					t, err := ptypes.Timestamp(reply.Time)
+					if err == nil {
+						fmt.Println("ping reply at time %s", t)
+					}
 				}
 			}
-		}
-		if err != nil {
-			logError(err)
-			return false
+			if err != nil {
+				logError(err)
+				return false
+			}
 		}
 	case "report":
 		r := parseReport(args)
@@ -117,56 +127,117 @@ func runCmd(args []string) bool {
 		}
 		switch args[1] {
 		case "report":
-			if len(args) != 3 {
-				fmt.Println(cmdHelp)
-				return false
-			}
-			report, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[2]})
-			if err == nil {
-				fmt.Println(report)
-				return false
-			} else {
-				logError(err)
+			{
+				if len(args) != 3 {
+					fmt.Println(cmdHelp)
+					return false
+				}
+				report, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[2]})
+				if err == nil {
+					fmt.Println(report)
+					return false
+				} else {
+					logError(err)
+				}
 			}
 		case "view":
-			if len(args) != 4 {
-				fmt.Println(cmdHelp)
-				return false
-			}
-			view, err := client.GetView(context.Background(), &pb.GetViewRequest{Observer: args[2], Subject: args[3]})
-			if err == nil {
-				dt.DumpView(os.Stdout, view)
-				return false
-			} else {
-				logError(err)
+			{
+				if len(args) != 4 {
+					fmt.Println(cmdHelp)
+					return false
+				}
+				view, err := client.GetView(context.Background(), &pb.GetViewRequest{Observer: args[2], Subject: args[3]})
+				if err == nil {
+					dt.DumpView(os.Stdout, view)
+					return false
+				} else {
+					logError(err)
+				}
 			}
 		case "panorama":
-			if len(args) != 3 {
-				fmt.Println(cmdHelp)
-				return false
-			}
-			pano, err := client.GetPanorama(context.Background(), &pb.GetPanoramaRequest{Subject: args[2]})
-			if err == nil {
-				dt.DumpPanorama(os.Stdout, pano)
-				return false
-			} else {
-				logError(err)
+			{
+				if len(args) != 3 {
+					fmt.Println(cmdHelp)
+					return false
+				}
+				pano, err := client.GetPanorama(context.Background(), &pb.GetPanoramaRequest{Subject: args[2]})
+				if err == nil {
+					dt.DumpPanorama(os.Stdout, pano)
+					return false
+				} else {
+					logError(err)
+				}
 			}
 		case "inference":
-			if len(args) != 3 {
-				fmt.Println(cmdHelp)
-				return false
-			}
-			inference, err := client.GetInference(context.Background(), &pb.GetInferenceRequest{Subject: args[2]})
-			if err == nil {
-				fmt.Println(dt.InferenceString(inference))
-				return false
-			} else {
-				logError(err)
+			{
+				if len(args) != 3 {
+					fmt.Println(cmdHelp)
+					return false
+				}
+				inference, err := client.GetInference(context.Background(), &pb.GetInferenceRequest{Subject: args[2]})
+				if err == nil {
+					fmt.Println(dt.InferenceString(inference))
+					return false
+				} else {
+					logError(err)
+				}
 			}
 		default:
 			fmt.Println(cmdHelp)
 			return false
+		}
+	case "dump":
+		if len(args) != 2 {
+			fmt.Println(cmdHelp)
+			return false
+		}
+		switch args[1] {
+		case "panorama":
+			{
+				tenants, err := client.DumpPanorama(context.Background(), &empty)
+				if err == nil {
+					for subject, panorama := range tenants.Panoramas {
+						fmt.Printf("=============%s=============\n", subject)
+						dt.DumpPanorama(os.Stdout, panorama)
+					}
+					return false
+				} else {
+					logError(err)
+				}
+			}
+		case "inference":
+			{
+				tenants, err := client.DumpInference(context.Background(), &empty)
+				if err == nil {
+					for subject, inference := range tenants.Inferences {
+						fmt.Printf("=============%s=============\n", subject)
+						fmt.Println(dt.InferenceString(inference))
+					}
+					return false
+				} else {
+					logError(err)
+				}
+			}
+		default:
+			fmt.Println(cmdHelp)
+			return false
+		}
+	case "list":
+		if len(args) != 2 {
+			fmt.Println(cmdHelp)
+			return false
+		}
+		switch args[1] {
+		case "subject":
+			reply, err := client.GetObservedSubjects(context.Background(), &empty)
+			if err == nil {
+				for subject, ts := range reply.Subjects {
+					t, _ := ptypes.Timestamp(ts)
+					fmt.Printf("%s\t%s\n", subject, t)
+				}
+			} else {
+				logError(err)
+			}
 		}
 	case "me":
 		if len(args) == 1 {
@@ -212,7 +283,7 @@ func fields(s string) []string {
 
 func main() {
 	flag.Usage = func() {
-		fmt.Printf("Usage: %s [options] <server address> [command <args...>]\n\n", os.Args[0])
+		fmt.Printf("Usage: %s [options] [command <args...>]\n\n", os.Args[0])
 		flag.PrintDefaults()
 		fmt.Println("\nIf no command was specified, the client enters an interactive mode.\n")
 		fmt.Println(cmdHelp)
@@ -223,20 +294,16 @@ func main() {
 		flag.Usage()
 		os.Exit(1)
 	}
-
-	addr := args[0]
-	cmdArgs := args[1:]
-
-	conn, err := grpc.Dial(addr, grpc.WithInsecure())
+	conn, err := grpc.Dial(*server, grpc.WithInsecure())
 	if err != nil {
-		panic(fmt.Sprintf("Could not connect to %s: %v", addr, err))
+		panic(fmt.Sprintf("Could not connect to %s: %v", *server, err))
 	}
 	defer conn.Close()
 	client = pb.NewHealthServiceClient(conn)
-	if len(cmdArgs) == 0 {
+	if len(args) == 0 {
 		runPrompt()
 		fmt.Println()
 	} else {
-		runCmd(cmdArgs)
+		runCmd(args)
 	}
 }
