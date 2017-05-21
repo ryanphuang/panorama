@@ -148,29 +148,42 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	var ensemble []zkserver
 	l := len(CONF_ID_PREFIX)
 	for scanner.Scan() {
-		text := scanner.Text()
-		if len(text) > 0 {
-			parts := strings.Split(text, "=")
-			if len(parts) != 2 {
-				return fmt.Errorf("Ensemble file should have %sID=ADDRESS format", CONF_ID_PREFIX)
-			}
-			if !strings.HasPrefix(parts[0], CONF_ID_PREFIX) {
-				return fmt.Errorf("Ensemble file should have %sID=ADDRESS format", CONF_ID_PREFIX)
-			}
-			eid := parts[0][l:len(parts[0])]
-			addr_str := strings.Split(parts[1], ":")[0]
-			ip := net.ParseIP(addr_str)
-			if ip == nil {
-				sips, err := net.LookupIP(addr_str)
-				if err == nil {
-					ensemble = append(ensemble, zkserver{eid: eid, address: sips[0].String()})
-				} else {
-					return fmt.Errorf("Invalid address " + addr_str)
-				}
-			} else {
-				ensemble = append(ensemble, zkserver{eid: eid, address: addr_str})
-			}
+		line := scanner.Text()
+		if len(line) == 0 {
+			continue
 		}
+		idx := strings.IndexByte(line, '#')
+		if idx >= 0 {
+			line = line[:idx]
+		}
+		if len(line) == 0 {
+			continue
+		}
+		parts := strings.Split(line, "=")
+		if len(parts) != 2 {
+			return fmt.Errorf("Ensemble file should have KEY=VALUE format")
+		}
+		key := strings.TrimSpace(parts[0])
+		value := strings.TrimSpace(parts[1])
+		if !strings.HasPrefix(key, CONF_ID_PREFIX) {
+			continue
+		}
+		eid := key[l:]
+		addr_str := strings.Split(value, ":")[0]
+		ip := net.ParseIP(addr_str)
+		if ip == nil {
+			sips, err := net.LookupIP(addr_str)
+			if err == nil {
+				ensemble = append(ensemble, zkserver{eid: eid, address: sips[0].String()})
+			} else {
+				return fmt.Errorf("Invalid address " + addr_str)
+			}
+		} else {
+			ensemble = append(ensemble, zkserver{eid: eid, address: addr_str})
+		}
+	}
+	if len(ensemble) == 0 {
+		return fmt.Errorf("No %sID=ADDRESS pair found", CONF_ID_PREFIX)
 	}
 	self.Ensemble = ensemble
 	fmt.Println(ensemble)
