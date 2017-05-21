@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	dh "deephealth"
+	du "deephealth/util"
 )
 
 const (
@@ -53,17 +53,17 @@ func (c *PersistentRpcClient) Reconnect(maxretries int) error {
 	sleep := time.Duration(1)
 	// retry for at most MaxRetries times with exponential back-off
 	for retries := 1; retries <= maxretries; retries++ {
-		dh.LogI(tag, "(%s) server shut down, trying to reconnect, %d time(s)...", c.Addr, retries)
+		du.LogI(tag, "(%s) server shut down, trying to reconnect, %d time(s)...", c.Addr, retries)
 		c.Close()
 		err = c.Connect()
 		if err == nil {
-			dh.LogI(tag, "(%s) server is back online", c.Addr)
+			du.LogI(tag, "(%s) server is back online", c.Addr)
 			break
 		}
 		// if it's the last retry and we haven't gone through yet,
 		// there is no point to sleep...take a break!
 		if retries != maxretries {
-			dh.LogD(tag, "(%s) sleeping for %d second(s)", c.Addr, sleep)
+			du.LogD(tag, "(%s) sleeping for %d second(s)", c.Addr, sleep)
 			time.Sleep(sleep * time.Second)
 			sleep = sleep * 2
 		}
@@ -97,7 +97,7 @@ func (c *PersistentRpcClient) Call(serviceMethod string, args interface{}, reply
 				err = c.conn.Call(serviceMethod, args, reply)
 			} else if err != nil {
 				err = rpc.ErrShutdown // force the return error to be rpc.ErrShutdown
-				dh.LogD(tag, "(%s) rpc server shutdown", c.Addr)
+				du.LogD(tag, "(%s) rpc server shutdown", c.Addr)
 			}
 		}
 	}

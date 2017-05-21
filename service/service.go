@@ -10,12 +10,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	dh "deephealth"
 	pb "deephealth/build/gen"
 	"deephealth/decision"
 	"deephealth/exchange"
 	"deephealth/store"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 const (
@@ -105,7 +105,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 
 func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRequest) (*pb.LearnReportReply, error) {
 	report := in.Report
-	dh.LogD(stag, "learn report about %s from %s at %s", report.Subject, in.Source.Id, in.Source.Addr)
+	du.LogD(stag, "learn report about %s from %s at %s", report.Subject, in.Source.Id, in.Source.Addr)
 	var result pb.LearnReportReply_Status
 	rc, err := self.storage.AddReport(report, self.FilterSubmission)
 	switch rc {
@@ -159,7 +159,7 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 	if err != nil {
 		return nil, err
 	}
-	dh.LogD(stag, "got ping request from %s at time %s", in.Source.Id, ts)
+	du.LogD(stag, "got ping request from %s at time %s", in.Source.Id, ts)
 	now := time.Now()
 	pnow, err := ptypes.TimestampProto(now)
 	if err != nil {
@@ -170,13 +170,13 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 
 func (self *HealthGServer) AnalyzeReport(report *pb.Report) {
 	self.rch <- report
-	dh.LogD(stag, "sent report for %s for inference", report.Subject)
+	du.LogD(stag, "sent report for %s for inference", report.Subject)
 	/*
 		select {
 		case self.rch <- report:
-			dh.LogD(stag, "send report for %s for inference", report.Subject)
+			du.LogD(stag, "send report for %s for inference", report.Subject)
 		default:
-			dh.LogD(stag, "fail to send report for %s for inference", report.Subject)
+			du.LogD(stag, "fail to send report for %s for inference", report.Subject)
 		}
 	*/
 }

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	dh "deephealth"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 var (
@@ -34,23 +34,23 @@ func main() {
 	var p, s int
 	var inc_p, inc_s bool
 	if len(*id) == 0 {
-		dh.LogF(tag, "Must specify the name id of this server")
+		du.LogF(tag, "Must specify the name id of this server")
 	}
 	if *fixport > 0 {
 		p = *fixport
 		inc_p = false
 	} else {
 		if *portstart <= 0 || *portend <= 0 {
-			dh.LogF(tag, "Port range must be positive")
+			du.LogF(tag, "Port range must be positive")
 		}
 		if *portstart > *portend {
-			dh.LogF(tag, "Port start must not exceed port end")
+			du.LogF(tag, "Port start must not exceed port end")
 		}
 		p = *portstart + int(r.Intn(*portend-*portstart))
 		inc_p = true
 	}
 	if *sidstart < 0 {
-		dh.LogF(tag, "Server id must be positive")
+		du.LogF(tag, "Server id must be positive")
 	}
 	s = *sidstart
 	inc_s = len(*addressp) > 0
@@ -73,7 +73,7 @@ func main() {
 	}
 	addr, ok := rc.Peers[*id]
 	if !ok {
-		dh.LogF(tag, "%s is not one of the peers %v", *id, rc.Peers)
+		du.LogF(tag, "%s is not one of the peers %v", *id, rc.Peers)
 	}
 	rc.Id = *id
 	rc.Addr = addr

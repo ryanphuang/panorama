@@ -9,9 +9,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	dh "deephealth"
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 const (
@@ -76,7 +76,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			ferr = err
 			continue
 		}
-		dh.LogD(etag, "propagated report to peer %s at %s", peer, addr)
+		du.LogD(etag, "propagated report to peer %s at %s", peer, addr)
 		if reply.Result == pb.LearnReportReply_IGNORED {
 			self.mu.Lock()
 			if ignoreset == nil {
@@ -85,7 +85,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			}
 			ignoreset[peer] = true
 			self.mu.Unlock()
-			dh.LogD(etag, "ignore peer %s about subject %s in the future", peer, report.Subject)
+			du.LogD(etag, "ignore peer %s about subject %s in the future", peer, report.Subject)
 		}
 	}
 	return ferr
@@ -102,12 +102,12 @@ func (self *ExchangeProtocol) Ping(peer string) (*pb.PingReply, error) {
 		return nil, err
 	}
 	request := &pb.PingRequest{Source: self.me, Time: pnow}
-	dh.LogD(etag, "ping %s at %s", peer, now)
+	du.LogD(etag, "ping %s at %s", peer, now)
 	reply, err := client.Ping(context.Background(), request)
 	if err != nil {
 		return nil, err
 	}
-	dh.LogD(etag, "got ping reply from %s at %s", peer, ptypes.TimestampString(reply.Time))
+	du.LogD(etag, "got ping reply from %s at %s", peer, ptypes.TimestampString(reply.Time))
 	return reply, nil
 }
 
@@ -138,7 +138,7 @@ func (self *ExchangeProtocol) Interested(peer string, subject string) bool {
 	_, ok = ignoreset[peer]
 	delete(ignoreset, peer) // remove peer from the ignoreset
 	if ok {
-		dh.LogD(etag, "removing %s from the ignoreset of peer %s", subject, peer)
+		du.LogD(etag, "removing %s from the ignoreset of peer %s", subject, peer)
 	}
 	return true
 }
@@ -152,7 +152,7 @@ func (self *ExchangeProtocol) Uninterested(peer string, subject string) bool {
 		self.SkipSubjectPeers[subject] = ignoreset
 	}
 	ignoreset[peer] = true
-	dh.LogD(etag, "stop notifying %s about health of %s in the future", peer, subject)
+	du.LogD(etag, "stop notifying %s about health of %s in the future", peer, subject)
 	return true
 }
 

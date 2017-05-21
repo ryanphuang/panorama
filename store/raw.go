@@ -5,9 +5,9 @@ import (
 	"os"
 	"sync"
 
-	dh "deephealth"
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
+	du "deephealth/util"
 
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
@@ -79,14 +79,14 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 	if !ok {
 		if filter {
 			// subject is not in our watch list, ignore the report
-			dh.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
+			du.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
 			self.mu.Unlock()
 			return REPORT_IGNORED, nil
 		} else {
 			self.Watchlist[report.Subject] = true
 		}
 	}
-	dh.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
+	du.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
 	l, ok := self.Locks[report.Subject]
 	if !ok {
 		l = new(sync.Mutex)
@@ -111,12 +111,12 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 			Observations: make([]*pb.Observation, 0, MaxReportPerView),
 		}
 		panorama.Views[report.Observer] = view
-		dh.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
+		du.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations = append(view.Observations, report.Observation)
-	dh.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
+	du.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
 	if len(view.Observations) > MaxReportPerView {
-		dh.LogD(tag, "truncating list")
+		du.LogD(tag, "truncating list")
 		view.Observations = view.Observations[1:]
 	}
 	return REPORT_ACCEPTED, nil

@@ -3,9 +3,9 @@ package decision
 import (
 	"time"
 
-	dh "deephealth"
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 type SimpleMajorityInference struct {
@@ -52,7 +52,7 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 		i++
 	}
 	for name, stat := range statmap {
-		dh.LogD("decision", "score sum for %s is %f", name, stat.ScoreSum)
+		du.LogD("decision", "score sum for %s is %f", name, stat.ScoreSum)
 		var maxcnt uint32 = 0
 		maxstatus := pb.Status_HEALTHY
 		for status, cnt := range stat.StatusHist {

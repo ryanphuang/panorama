@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
-	dh "deephealth"
 	dd "deephealth/decision"
 	dt "deephealth/types"
+	du "deephealth/util"
 
 	pb "deephealth/build/gen"
 )
@@ -57,7 +57,7 @@ func (self *HealthInferenceStorage) Infer(report *pb.Report) (*pb.Inference, err
 	if inference == nil {
 		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}
-	dh.LogD(itag, "inference result for %s: %s", report.Subject, dt.ObservationString(inference.Observation))
+	du.LogD(itag, "inference result for %s: %s", report.Subject, dt.ObservationString(inference.Observation))
 	self.mu.Lock()
 	self.Results[report.Subject] = inference
 	self.mu.Unlock()
@@ -79,7 +79,7 @@ func (self *HealthInferenceStorage) Start() error {
 		for self.alive {
 			select {
 			case report := <-self.ReportCh:
-				dh.LogD(itag, "received report for %s for inference", report.Subject)
+				du.LogD(itag, "received report for %s for inference", report.Subject)
 				self.Infer(report)
 			}
 		}
@@ -92,7 +92,7 @@ func (self *HealthInferenceStorage) Stop() error {
 	var report pb.Report
 	select {
 	case self.ReportCh <- &report:
-		dh.LogI(itag, "send empty report to stop the service")
+		du.LogI(itag, "send empty report to stop the service")
 	default:
 	}
 	return nil
