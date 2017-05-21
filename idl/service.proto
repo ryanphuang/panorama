@@ -34,6 +34,8 @@ service HealthService {
 	// Query all raw health report of an entity
   rpc GetInference(GetInferenceRequest) returns (Inference) {}
 
+  rpc GetObservedSubjects(GetObservedSubjectsRequest) returns (GetObservedSubjectsReply) {}
+
   // ping request to test liveness of a health server
   rpc Ping(PingRequest) returns (PingReply) {}
 }
@@ -93,6 +95,13 @@ message GetReportRequest {
 
 message GetInferenceRequest {
   string subject = 1;
+}
+
+message GetObservedSubjectsRequest {
+}
+
+message GetObservedSubjectsReply {
+  map<string, google.protobuf.Timestamp> subjects = 1;
 }
 
 message PingRequest {

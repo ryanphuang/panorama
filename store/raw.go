@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
@@ -26,7 +27,7 @@ const (
 type RawHealthStorage struct {
 	Tenants   map[string]*pb.Panorama
 	Locks     map[string]*sync.Mutex
-	Watchlist map[string]bool
+	Watchlist map[string]time.Time
 
 	mu *sync.Mutex
 }
@@ -35,13 +36,14 @@ func NewRawHealthStorage(subjects ...string) *RawHealthStorage {
 	store := &RawHealthStorage{
 		Tenants:   make(map[string]*pb.Panorama),
 		Locks:     make(map[string]*sync.Mutex),
-		Watchlist: make(map[string]bool),
+		Watchlist: make(map[string]time.Time),
 
 		mu: &sync.Mutex{},
 	}
 	var panorama *pb.Panorama
+	now := time.Now()
 	for _, subject := range subjects {
-		store.Watchlist[subject] = true
+		store.Watchlist[subject] = now
 		store.Locks[subject] = new(sync.Mutex)
 		panorama = new(pb.Panorama)
 		panorama.Subject = subject
@@ -56,7 +58,7 @@ var _ dt.HealthStorage = new(RawHealthStorage)
 func (self *RawHealthStorage) AddSubject(subject string) bool {
 	self.mu.Lock()
 	_, ok := self.Watchlist[subject]
-	self.Watchlist[subject] = true
+	self.Watchlist[subject] = time.Now()
 	self.mu.Unlock()
 	return !ok
 }
@@ -73,6 +75,10 @@ func (self *RawHealthStorage) RemoveSubject(subject string, clean bool) bool {
 	return ok
 }
 
+func (self *RawHealthStorage) GetSubjects() map[string]time.Time {
+	return self.Watchlist
+}
+
 func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, error) {
 	self.mu.Lock()
 	_, ok := self.Watchlist[report.Subject]
@@ -83,7 +89,8 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 			self.mu.Unlock()
 			return REPORT_IGNORED, nil
 		} else {
-			self.Watchlist[report.Subject] = true
+			// no filtering, add subject to watch list
+			self.Watchlist[report.Subject] = time.Now()
 		}
 	}
 	du.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)

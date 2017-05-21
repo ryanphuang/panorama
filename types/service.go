@@ -2,6 +2,7 @@ package types
 
 import (
 	"sync"
+	"time"
 
 	pb "deephealth/build/gen"
 )
@@ -13,6 +14,9 @@ type HealthStorage interface {
 	// Stop observing a particular subject, all the reports
 	// concerning this subject will be ignored
 	RemoveSubject(subject string, clean bool) bool
+
+	// Get the list of subjects that we have observed
+	GetSubjects() map[string]time.Time
 
 	// Add a report to the view storage
 	AddReport(report *pb.Report, filter bool) (int, error)

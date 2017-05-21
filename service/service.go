@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
+	tspb "github.com/golang/protobuf/ptypes/timestamp"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -152,6 +153,19 @@ func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.RemoveSubject(in.Subject, true)
 	return &pb.ObserveReply{Success: ok}, nil
+}
+
+func (self *HealthGServer) GetObservedSubjects(ctx context.Context, in *pb.GetObservedSubjectsRequest) (*pb.GetObservedSubjectsReply, error) {
+	watchList := self.storage.GetSubjects()
+	result := make(map[string]*tspb.Timestamp)
+	for subject, ts := range watchList {
+		pts, err := ptypes.TimestampProto(ts)
+		if err != nil {
+			return nil, err
+		}
+		result[subject] = pts
+	}
+	return &pb.GetObservedSubjectsReply{result}, nil
 }
 
 func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
