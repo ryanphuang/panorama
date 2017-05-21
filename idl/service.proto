@@ -116,7 +116,7 @@ message DumpPanoramaReply {
 }
 
 message DumpInferenceReply {
-  map<string, Inference> panoramas = 1;
+  map<string, Inference> inferences = 1;
 }
 
 message PingRequest {
