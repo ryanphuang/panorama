@@ -22,4 +22,4 @@ else
   echo "Failed to stop deep health server"
 fi
 
-pkill -9 hview-server
+pkill -9 hview-server 2>/dev/null
