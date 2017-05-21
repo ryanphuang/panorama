@@ -46,6 +46,7 @@ const (
 )
 
 var (
+	ztag              = "zookeeper-plugin"
 	zookeeperFlagset  = flag.NewFlagSet("zookeeper", flag.ExitOnError)
 	zookeeperEnsemble = zookeeperFlagset.String("ensemble", "zoo.cfg", "ZooKeeper ensemble file to use")
 	zookeeperFilter   = zookeeperFlagset.String("filter", "zoo_filter.json", "Filter configuration file to decide which event to report")
@@ -117,6 +118,9 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	}
 	re, ok := self.TagContextReMap[tag_context]
 	if !ok || (re != nil && !re.MatchString(content)) {
+		if tag_subject != myid {
+			du.LogD(ztag, "ignore communication related log: %s", line)
+		}
 		return nil
 	}
 	if len(tag_subject) == 0 {
