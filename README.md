@@ -89,4 +89,5 @@ produce something like this:
 ```
 
 ## Using the log monitor tool to participate in deep health reporting
-`$ hview-logtail pano3:6688 ~/software/zookeeper/zookeeper.out ensemble.cfg`
+For example, to use the ZooKeeper plugin of the logtail tool, run
+`$ hview-logtail -stale=-1 -server pano0:6688 -log ~/software/zookeeper/zookeeper.out zookeeper --ensemble ~/software/zookeeper/conf/zoo.cfg  --filter conf/zoo_filter.json`
