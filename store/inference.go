@@ -74,6 +74,10 @@ func (self *HealthInferenceStorage) GetInference(subject string) *pb.Inference {
 	return inference
 }
 
+func (self *HealthInferenceStorage) DumpInference() map[string]*pb.Inference {
+	return self.Results
+}
+
 func (self *HealthInferenceStorage) Start() error {
 	go func() {
 		for self.alive {

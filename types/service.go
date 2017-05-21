@@ -29,6 +29,9 @@ type HealthStorage interface {
 
 	// Get the view from an observer about a subject
 	GetView(observer string, subject string) (*pb.View, *sync.Mutex)
+
+	// Get all the panoramas for all observed subjects
+	DumpPanorama() map[string]*pb.Panorama
 }
 
 type HealthInference interface {
@@ -37,6 +40,9 @@ type HealthInference interface {
 
 	// Get the health inference of a subject
 	GetInference(subject string) *pb.Inference
+
+	// Get all the health inference for all observed subjects
+	DumpInference() map[string]*pb.Inference
 
 	// Start the inference service
 	Start() error

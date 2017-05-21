@@ -25,19 +25,29 @@ service HealthService {
 	// Query the latest raw health report of an entity
   rpc GetLatestReport(GetReportRequest) returns (Report) {}
 
-	// Query all raw health report of an entity
+	// Query all raw health reports from different observers about an entity
   rpc GetPanorama(GetPanoramaRequest) returns (Panorama) {}
 
-	// Query all raw health report of an entity
+	// Query all raw health report from a single observer about an entity
   rpc GetView(GetViewRequest) returns (View) {}
 
-	// Query all raw health report of an entity
+	// Query a summarized health report from different observers about an entity
   rpc GetInference(GetInferenceRequest) returns (Inference) {}
 
-  rpc GetObservedSubjects(GetObservedSubjectsRequest) returns (GetObservedSubjectsReply) {}
+  // Query the list of all subjects that have been observed
+  rpc GetObservedSubjects(Empty) returns (GetObservedSubjectsReply) {}
+
+  // Dump all the raw health reports about all observed entities
+  rpc DumpPanorama(Empty) returns (DumpPanoramaReply) {}
+
+  // Dump all the inferred health reports about all observed entities
+  rpc DumpInference(Empty) returns (DumpInferenceReply) {}
 
   // ping request to test liveness of a health server
   rpc Ping(PingRequest) returns (PingReply) {}
+}
+
+message Empty {
 }
 
 message Peer {
@@ -97,11 +107,16 @@ message GetInferenceRequest {
   string subject = 1;
 }
 
-message GetObservedSubjectsRequest {
-}
-
 message GetObservedSubjectsReply {
   map<string, google.protobuf.Timestamp> subjects = 1;
+}
+
+message DumpPanoramaReply {
+  map<string, Panorama> panoramas = 1;
+}
+
+message DumpInferenceReply {
+  map<string, Inference> panoramas = 1;
 }
 
 message PingRequest {

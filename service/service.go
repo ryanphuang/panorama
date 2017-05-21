@@ -155,7 +155,7 @@ func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequ
 	return &pb.ObserveReply{Success: ok}, nil
 }
 
-func (self *HealthGServer) GetObservedSubjects(ctx context.Context, in *pb.GetObservedSubjectsRequest) (*pb.GetObservedSubjectsReply, error) {
+func (self *HealthGServer) GetObservedSubjects(ctx context.Context, in *pb.Empty) (*pb.GetObservedSubjectsReply, error) {
 	watchList := self.storage.GetSubjects()
 	result := make(map[string]*tspb.Timestamp)
 	for subject, ts := range watchList {
@@ -166,6 +166,14 @@ func (self *HealthGServer) GetObservedSubjects(ctx context.Context, in *pb.GetOb
 		result[subject] = pts
 	}
 	return &pb.GetObservedSubjectsReply{result}, nil
+}
+
+func (self *HealthGServer) DumpPanorama(ctx context.Context, in *pb.Empty) (*pb.DumpPanoramaReply, error) {
+	return &pb.DumpPanoramaReply{self.storage.DumpPanorama()}, nil
+}
+
+func (self *HealthGServer) DumpInference(ctx context.Context, in *pb.Empty) (*pb.DumpInferenceReply, error) {
+	return &pb.DumpInferenceReply{self.inference.DumpInference()}, nil
 }
 
 func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {

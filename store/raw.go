@@ -201,6 +201,10 @@ func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 	}
 }
 
+func (self *RawHealthStorage) DumpPanorama() map[string]*pb.Panorama {
+	return self.Tenants
+}
+
 func (self *RawHealthStorage) Dump() {
 	for subject, panorama := range self.Tenants {
 		fmt.Printf("=============%s=============\n", subject)
