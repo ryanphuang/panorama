@@ -2,6 +2,7 @@ package plugin
 
 import (
 	"bufio"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
@@ -15,8 +16,9 @@ import (
 )
 
 type ZooKeeperPlugin struct {
-	Ensemble []zkserver
-	Parser   dt.EventParser
+	Ensemble     []zkserver
+	FilterConfig *EventFilterConfig
+	Parser       dt.EventParser
 }
 
 type ZooKeeperEventParser struct {
@@ -31,6 +33,10 @@ type zkserver struct {
 	address string
 }
 
+type EventFilterConfig struct {
+	TagContextPattern map[string]string
+}
+
 const (
 	EID_PREFIX        = "peer@"
 	CONF_ID_PREFIX    = "server."
@@ -42,19 +48,13 @@ const (
 var (
 	zookeeperFlagset  = flag.NewFlagSet("zookeeper", flag.ExitOnError)
 	zookeeperEnsemble = zookeeperFlagset.String("ensemble", "zoo.cfg", "ZooKeeper ensemble file to use")
+	zookeeperFilter   = zookeeperFlagset.String("filter", "zoo_filter.json", "Filter configuration file to decide which event to report")
 )
 
 var (
-	zkline_reg           = &du.MRegexp{regexp.MustCompile(ZOOKEEPER_LINE_RE)}
-	tag_id_reg           = &du.MRegexp{regexp.MustCompile(TAG_ID_RE)}
-	tag_host_reg         = &du.MRegexp{regexp.MustCompile(TAG_HOST_RE)}
-	tag_context_patterns = map[string]string{
-		"RecvWorker":       "",
-		"SendWorker":       "",
-		"SyncThread":       "^Too busy to snap, skipping.*$",
-		"Snapshot Thread":  "^Slow serializing node .*$",
-		"LearnerHandler-/": "^Slow serializing node .*$",
-	}
+	zkline_reg   = &du.MRegexp{regexp.MustCompile(ZOOKEEPER_LINE_RE)}
+	tag_id_reg   = &du.MRegexp{regexp.MustCompile(TAG_ID_RE)}
+	tag_host_reg = &du.MRegexp{regexp.MustCompile(TAG_HOST_RE)}
 )
 
 func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, tag_context_patterns map[string]string) *ZooKeeperEventParser {
@@ -135,14 +135,10 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	}
 }
 
-func (self *ZooKeeperPlugin) ProvideFlags() *flag.FlagSet {
-	return zookeeperFlagset
-}
-
-func (self *ZooKeeperPlugin) ValidateFlags() error {
-	fp, err := os.Open(*zookeeperEnsemble)
+func ParseEnsembleFile(path string) ([]zkserver, error) {
+	fp, err := os.Open(path)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	scanner := bufio.NewScanner(fp)
 	var ensemble []zkserver
@@ -161,7 +157,7 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 		}
 		parts := strings.Split(line, "=")
 		if len(parts) != 2 {
-			return fmt.Errorf("Ensemble file should have KEY=VALUE format")
+			return nil, fmt.Errorf("Ensemble file should have KEY=VALUE format")
 		}
 		key := strings.TrimSpace(parts[0])
 		value := strings.TrimSpace(parts[1])
@@ -176,22 +172,53 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 			if err == nil {
 				ensemble = append(ensemble, zkserver{eid: eid, address: sips[0].String()})
 			} else {
-				return fmt.Errorf("Invalid address " + addr_str)
+				return nil, fmt.Errorf("Invalid address " + addr_str)
 			}
 		} else {
 			ensemble = append(ensemble, zkserver{eid: eid, address: addr_str})
 		}
 	}
 	if len(ensemble) == 0 {
-		return fmt.Errorf("No %sID=ADDRESS pair found", CONF_ID_PREFIX)
+		return nil, fmt.Errorf("No %sID=ADDRESS pair found", CONF_ID_PREFIX)
 	}
+	return ensemble, nil
+}
+
+func ParseEventFilterFile(path string) (*EventFilterConfig, error) {
+	fp, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer fp.Close()
+	rc := new(EventFilterConfig)
+	err = json.NewDecoder(fp).Decode(rc)
+	if err != nil {
+		return nil, err
+	}
+	return rc, nil
+}
+
+func (self *ZooKeeperPlugin) ProvideFlags() *flag.FlagSet {
+	return zookeeperFlagset
+}
+
+func (self *ZooKeeperPlugin) ValidateFlags() error {
+	ensemble, err := ParseEnsembleFile(*zookeeperEnsemble)
+	if err != nil {
+		return err
+	}
+	filterConfig, err := ParseEventFilterFile(*zookeeperFilter)
+	if err != nil {
+		return err
+	}
+	fmt.Println(ensemble, filterConfig)
 	self.Ensemble = ensemble
-	fmt.Println(ensemble)
+	self.FilterConfig = filterConfig
 	return nil
 }
 
 func (self *ZooKeeperPlugin) Init() error {
-	self.Parser = NewZooKeeperEventParser(EID_PREFIX, self.Ensemble, tag_context_patterns)
+	self.Parser = NewZooKeeperEventParser(EID_PREFIX, self.Ensemble, self.FilterConfig.TagContextPattern)
 	return nil
 }
 
