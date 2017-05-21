@@ -49,9 +49,14 @@ file generated before:
 
 `$ hview-server -config hs.cfg`
 
-## Starting deep health client
+## Using the log monitor tool to participate in deep health reporting
+For example, to use the ZooKeeper plugin of the logtail tool, run
+`$ hview-logtail -stale=-1 -server pano0:6688 -log ~/software/zookeeper/zookeeper.out zookeeper --ensemble ~/software/zookeeper/conf/zoo.cfg  --filter conf/zoo_filter.json`
 
-To start an interactive deep health client, run
+## Querying or reporting using deep health client
+
+### Submit a health report
+To start deep health client in an interactive mode, run
 
 `$ hview-client pano0:6688`
 
@@ -62,7 +67,9 @@ An example session is as follows:
 Command list:
          me observer
          report subject [<metric:status:score...>]
-         get [report|view|panorama] [observer] subject
+         get [report|view|inference|panorama] [observer] subject 
+         list [subject]
+         dump [inference|panorama]
          ping
          help
          exit
@@ -88,6 +95,46 @@ produce something like this:
 2017-05-19T08:13:15Z[DEBUG] inference.go:60: inference result for TS_2: 2017-05-19T08:13:15.387037413Z { snapshot: UNHEALTHY, 30.0; }
 ```
 
-## Using the log monitor tool to participate in deep health reporting
-For example, to use the ZooKeeper plugin of the logtail tool, run
-`$ hview-logtail -stale=-1 -server pano0:6688 -log ~/software/zookeeper/zookeeper.out zookeeper --ensemble ~/software/zookeeper/conf/zoo.cfg  --filter conf/zoo_filter.json`
+### Query health report
+
+To list all subjects that have been observed,
+
+```bash
+$ hview-client -server pano0:6688 list subject
+
+peer@1  2017-05-21 08:00:39.367133633 +0000 UTC
+peer@4  2017-05-21 08:00:39.35836465 +0000 UTC
+peer@3  2017-05-21 08:00:39.360098717 +0000 UTC
+peer@2  2017-05-21 08:00:39.361055495 +0000 UTC
+peer@8  2017-05-21 08:00:39.362379457 +0000 UTC
+peer@9  2017-05-21 08:00:39.365596665 +0000 UTC
+```
+
+To get a panorama for a particular subject,
+
+```bash
+$ hview-client -server pano0:6688 get panorama peer@9
+
+[[... peer@9->peer@9 (1 observations) ...]]
+  |peer@9| 2017-05-19T17:16:25Z { SyncThread: UNHEALTHY, 20.0; }
+```
+
+To dump all inference for all observed subjects,
+
+```bash
+$ hview-client -server pano0:6688 dump inference
+
+=============peer@1=============
+[peer@9] ==> peer@1: 2017-05-21T08:00:39.367278005Z { RecvWorker: UNHEALTHY, 20.0; }
+=============peer@4=============
+[peer@9] ==> peer@4: 2017-05-21T08:00:39.358928732Z { RecvWorker: UNHEALTHY, 20.0; }
+=============peer@3=============
+[peer@9] ==> peer@3: 2017-05-21T08:00:39.360242189Z { SendWorker: UNHEALTHY, 20.0; }
+=============peer@2=============
+[peer@9] ==> peer@2: 2017-05-21T08:00:39.361172754Z { SendWorker: UNHEALTHY, 20.0; }
+=============peer@8=============
+[peer@9] ==> peer@8: 2017-05-21T08:00:39.362531433Z { SendWorker: UNHEALTHY, 20.0; }
+=============peer@9=============
+[peer@9] ==> peer@9: 2017-05-21T08:00:39.365718626Z { SyncThread: UNHEALTHY, 20.0; }
+```
+
