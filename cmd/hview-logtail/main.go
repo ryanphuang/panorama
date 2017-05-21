@@ -16,18 +16,17 @@ import (
 )
 
 var (
-	report = flag.Bool("report", true, "Whether to report events to health service")
-	log    = flag.String("log", "", "Log file to watch for (Required)")
-	server = flag.String("server", "localhost:6688", "Address of health server to report events to (Required)")
-)
-
-const (
-	staleSeconds = 5 * 60 // 5 minutes
-	mergeSeconds = 5      // merge within 5 seconds
+	report       = flag.Bool("report", true, "Whether to report events to health service")
+	staleSeconds = flag.Int("stale", 5*60, "Cutoff in seconds to skip stale events. -1 means no check for staleness.")
+	mergeSeconds = flag.Int("merge", 5, "Do not repeated report event for a subject within the given time.")
+	log          = flag.String("log", "", "Log file to watch for (Required)")
+	server       = flag.String("server", "localhost:6688", "Address of health server to report events to (Required)")
 )
 
 var lastReportTime = make(map[string]time.Time)
 var ipEntities = make(map[string]string)
+var staleCutoff float64
+var mergeCutoff float64
 
 func usage() {
 	fmt.Printf("Usage: %s OPTIONS <plugin> [PLUGIN OPTIONS]...\n\n", os.Args[0])
@@ -35,10 +34,12 @@ func usage() {
 }
 
 func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
-	ts, ok := lastReportTime[event.Subject]
-	if ok && time.Now().Sub(ts).Seconds() < mergeSeconds {
-		fmt.Printf("report for %s is too frequent, skip\n", event.Subject)
-		return nil
+	if mergeCutoff > 0 {
+		ts, ok := lastReportTime[event.Subject]
+		if ok && time.Now().Sub(ts).Seconds() < mergeCutoff {
+			fmt.Printf("report for %s is too frequent, skip\n", event.Subject)
+			return nil
+		}
 	}
 	observation := dt.NewObservationSingleMetric(event.Time, event.Context, pb.Status_UNHEALTHY, 20)
 	report := &pb.Report{
@@ -100,6 +101,8 @@ func main() {
 		defer conn.Close()
 		client = pb.NewHealthServiceClient(conn)
 	}
+	staleCutoff = float64(*staleSeconds)
+	mergeCutoff = float64(*mergeSeconds)
 
 	fmt.Println("Start monitoring " + *log)
 
@@ -107,12 +110,10 @@ func main() {
 	for line := range t.Lines {
 		event := parser.ParseLine(line.Text)
 		if event != nil {
-			/*
-				if time.Since(event.ts).Seconds() > staleSeconds {
-					fmt.Printf("skip stale event: %s\n", event)
-					continue
-				}
-			*/
+			if staleCutoff > 0 && time.Since(event.Time).Seconds() > staleCutoff {
+				fmt.Printf("Skip stale event: %s\n", event)
+				continue
+			}
 			fmt.Println(event)
 			if *report {
 				reportEvent(client, event)
