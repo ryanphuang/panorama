@@ -4,3 +4,4 @@ target/
 hs.cfg
 deephealth.out
 deephealth.pid
+logtail.log
