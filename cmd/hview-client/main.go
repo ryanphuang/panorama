@@ -229,15 +229,20 @@ func runCmd(args []string) bool {
 		}
 		switch args[1] {
 		case "subject":
-			reply, err := client.GetObservedSubjects(context.Background(), &empty)
-			if err == nil {
-				for subject, ts := range reply.Subjects {
-					t, _ := ptypes.Timestamp(ts)
-					fmt.Printf("%s\t%s\n", subject, t)
+			{
+				reply, err := client.GetObservedSubjects(context.Background(), &empty)
+				if err == nil {
+					for subject, ts := range reply.Subjects {
+						t, _ := ptypes.Timestamp(ts)
+						fmt.Printf("%s\t%s\n", subject, t)
+					}
+				} else {
+					logError(err)
 				}
-			} else {
-				logError(err)
 			}
+		default:
+			fmt.Println(cmdHelp)
+			return false
 		}
 	case "me":
 		if len(args) == 1 {
