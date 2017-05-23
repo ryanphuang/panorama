@@ -22,10 +22,10 @@ type ZooKeeperPlugin struct {
 }
 
 type ZooKeeperEventParser struct {
-	EntityIdPrefix  string
-	EIdAddrMap      map[string]string
-	AddrEIdMap      map[string]string
-	TagContextReMap du.MRegexpMap
+	EntityIdPrefix    string
+	EIdAddrMap        map[string]string
+	AddrEIdMap        map[string]string
+	TagContextPattern *du.MPatternMix
 }
 
 type zkserver struct {
@@ -65,12 +65,12 @@ func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, tag_context_p
 		m1[server.eid] = server.address
 		m2[server.address] = server.eid
 	}
-	m3 := du.NewMRegexpMap(tag_context_patterns)
+	m3 := du.NewMPatternMix(tag_context_patterns)
 	return &ZooKeeperEventParser{
-		EntityIdPrefix:  idprefix,
-		EIdAddrMap:      m1,
-		AddrEIdMap:      m2,
-		TagContextReMap: m3,
+		EntityIdPrefix:    idprefix,
+		EIdAddrMap:        m1,
+		AddrEIdMap:        m2,
+		TagContextPattern: m3,
 	}
 }
 
@@ -79,9 +79,9 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	if len(result) == 0 {
 		return nil
 	}
-	if result["level"] == "INFO" || result["level"] == "DEBUG" {
-		return nil
-	}
+	// if result["level"] == "INFO" || result["level"] == "DEBUG" {
+	//		return nil
+	// }
 	myid := result["id"]
 	tag := result["tag"]
 	content := result["content"]
@@ -116,8 +116,8 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 			tag_context = tag
 		}
 	}
-	re, ok := self.TagContextReMap[tag_context]
-	if !ok || (re != nil && !re.MatchString(content)) {
+	fmt.Println(tag_context)
+	if self.TagContextPattern.IsMatch(tag_context, content) {
 		if tag_subject != myid {
 			du.LogD(ztag, "ignore communication related log: %s", line)
 		}

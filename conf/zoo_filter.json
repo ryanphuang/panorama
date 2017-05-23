@@ -1,5 +1,7 @@
 {
     "TagContextPattern": {
+        "WorkerReceiver[myid=%d]": "",
+        "WorkerSender[myid=%d]": "",
         "LearnerHandler-/": "^Slow serializing node .*$",
         "RecvWorker": "",
         "SendWorker": "",
