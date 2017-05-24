@@ -48,8 +48,8 @@ const (
 var (
 	ztag              = "zookeeper-plugin"
 	zookeeperFlagset  = flag.NewFlagSet("zookeeper", flag.ExitOnError)
-	zookeeperEnsemble = zookeeperFlagset.String("ensemble", "zoo.cfg", "ZooKeeper ensemble file to use")
-	zookeeperFilter   = zookeeperFlagset.String("filter", "zoo_filter.json", "Filter configuration file to decide which event to report")
+	zookeeperEnsemble = zookeeperFlagset.String("ensemble", "conf/zoo.cfg", "ZooKeeper ensemble file to use")
+	zookeeperFilter   = zookeeperFlagset.String("filter", "conf/zoo_filter.json", "Filter configuration file to decide which event to report")
 )
 
 var (
