@@ -15,6 +15,21 @@ type HealthServerConfig struct {
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
 }
 
+type EventFilterClauseConfig struct {
+	Field         string
+	Operator      string
+	Pattern       string
+	CaptureResult bool // whether to capture filter result or just return the decision
+}
+
+type EventFilterChainConfig struct {
+	Filters []*EventFilterClauseConfig
+}
+
+type EventFilterPatternConfig struct {
+	Chains []EventFilterChainConfig
+}
+
 func LoadConfig(path string, config interface{}) error {
 	fp, err := os.Open(path)
 	if err != nil {

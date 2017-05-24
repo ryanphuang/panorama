@@ -12,6 +12,10 @@ type Event struct {
 	Extra   string
 }
 
+type EventMap struct {
+	Fields map[string]string
+}
+
 type EventParser interface {
 	ParseLine(line string) *Event
 }

@@ -21,7 +21,7 @@ type MPatternMix struct {
 	ReList MRegexpPairList
 }
 
-func (r *MRegexp) FindStringSubmatchMap(s string) MRegexpMatch {
+func (r *MRegexp) FindStringSubmatchMap(s string, group_prefix string) MRegexpMatch {
 	groups := make(map[string]string)
 	result := r.FindStringSubmatch(s)
 	if result == nil {
@@ -34,7 +34,7 @@ func (r *MRegexp) FindStringSubmatchMap(s string) MRegexpMatch {
 			groups["_all_"] = result[i]
 			continue
 		}
-		groups[name] = result[i]
+		groups[group_prefix+name] = result[i]
 	}
 	return groups
 }

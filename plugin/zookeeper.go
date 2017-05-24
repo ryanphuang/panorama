@@ -75,7 +75,7 @@ func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, tag_context_p
 }
 
 func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
-	result := zkline_reg.FindStringSubmatchMap(line)
+	result := zkline_reg.FindStringSubmatchMap(line, "")
 	if len(result) == 0 {
 		return nil
 	}
@@ -85,7 +85,7 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	myid := result["id"]
 	tag := result["tag"]
 	content := result["content"]
-	tag_result := tag_id_reg.FindStringSubmatchMap(tag)
+	tag_result := tag_id_reg.FindStringSubmatchMap(tag, "")
 	var tag_context string
 	var tag_subject string
 	var ok bool
@@ -97,7 +97,7 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 		tag_subject = tag_result["id"] // EID in ensemble, assign it as tag subject
 		tag_context = tag_result["context"]
 	} else {
-		tag_result = tag_host_reg.FindStringSubmatchMap(tag)
+		tag_result = tag_host_reg.FindStringSubmatchMap(tag, "")
 		// found potential host ip in tag
 		if len(tag_result) != 0 && du.IsIP(tag_result["host"]) && du.IsPort(tag_result["port"]) {
 			if tag_result["host"] == "0.0.0.0" {
