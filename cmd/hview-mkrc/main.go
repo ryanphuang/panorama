@@ -82,7 +82,7 @@ func main() {
 		rc.Subjects = strings.Split(*subjects, ",")
 	}
 	if len(*output) > 0 {
-		rc.Save(*output)
+		dt.SaveConfig(*output, rc)
 	}
-	fmt.Println(rc.String())
+	fmt.Println(dt.JString(rc))
 }

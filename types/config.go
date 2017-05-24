@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -14,22 +15,21 @@ type HealthServerConfig struct {
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
 }
 
-func LoadConfig(path string) (*HealthServerConfig, error) {
+func LoadConfig(path string, config interface{}) error {
 	fp, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer fp.Close()
-	rc := new(HealthServerConfig)
-	err = json.NewDecoder(fp).Decode(rc)
+	err = json.NewDecoder(fp).Decode(config)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return rc, nil
+	return nil
 }
 
-func (self *HealthServerConfig) Save(path string) error {
-	bytes, err := self.marshal()
+func SaveConfig(path string, config interface{}) error {
+	bytes, err := JSONMarshal(config, "", "    ")
 	if err != nil {
 		return err
 	}
@@ -48,12 +48,17 @@ func (self *HealthServerConfig) Save(path string) error {
 	return fp.Close()
 }
 
-func (self *HealthServerConfig) marshal() ([]byte, error) {
-	return json.MarshalIndent(self, "", "    ")
+func JSONMarshal(t interface{}, prefix string, indent string) ([]byte, error) {
+	buffer := bytes.Buffer{}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent(prefix, indent)
+	err := encoder.Encode(t)
+	return buffer.Bytes(), err
 }
 
-func (self *HealthServerConfig) String() string {
-	bytes, err := self.marshal()
+func JString(config interface{}) string {
+	bytes, err := JSONMarshal(config, "", "    ")
 	if err != nil {
 		return ""
 	}

@@ -28,10 +28,10 @@ func main() {
 	}
 
 	flag.Parse()
-	var config *dt.HealthServerConfig
+	config := new(dt.HealthServerConfig)
 	var err error
 	if len(*rc) > 0 {
-		config, err = dt.LoadConfig(*rc)
+		err = dt.LoadConfig(*rc, config)
 		if err != nil {
 			panic(err)
 		}
