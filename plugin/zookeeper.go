@@ -2,7 +2,6 @@ package plugin
 
 import (
 	"bufio"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"net"
@@ -79,9 +78,9 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	if len(result) == 0 {
 		return nil
 	}
-	// if result["level"] == "INFO" || result["level"] == "DEBUG" {
-	//		return nil
-	// }
+	if result["level"] == "DEBUG" {
+		return nil
+	}
 	myid := result["id"]
 	tag := result["tag"]
 	content := result["content"]
@@ -188,20 +187,6 @@ func ParseEnsembleFile(path string) ([]zkserver, error) {
 	return ensemble, nil
 }
 
-func ParseEventFilterFile(path string) (*EventFilterConfig, error) {
-	fp, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer fp.Close()
-	rc := new(EventFilterConfig)
-	err = json.NewDecoder(fp).Decode(rc)
-	if err != nil {
-		return nil, err
-	}
-	return rc, nil
-}
-
 func (self *ZooKeeperPlugin) ProvideFlags() *flag.FlagSet {
 	return zookeeperFlagset
 }
@@ -211,7 +196,8 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	if err != nil {
 		return err
 	}
-	filterConfig, err := ParseEventFilterFile(*zookeeperFilter)
+	filterConfig := new(EventFilterConfig)
+	err = dt.LoadConfig(*zookeeperFilter, filterConfig)
 	if err != nil {
 		return err
 	}
