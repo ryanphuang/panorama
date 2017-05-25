@@ -89,7 +89,11 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	plugin.Init()
+	err = plugin.Init()
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	parser := plugin.ProvideEventParser()
 
 	var client pb.HealthServiceClient
