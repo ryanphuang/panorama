@@ -32,13 +32,8 @@ type FieldFilterChainConfig struct {
 	Classifier ClassifierConfig
 }
 
-type FieldFilterBranchConfig struct {
-	Head   *FieldFilterClauseConfig
-	Bodies []*FieldFilterChainConfig
-}
-
 type FieldFilterTreeConfig struct {
-	FilterTree []*FieldFilterBranchConfig
+	FilterTree []*FieldFilterChainConfig
 }
 
 func LoadConfig(path string, config interface{}) error {

@@ -207,28 +207,36 @@ func NewFieldClassifier(config *ClassifierConfig) (FieldClassifier, error) {
 
 func NewFieldFilterTree(config *FieldFilterTreeConfig) (FieldFilterTree, error) {
 	var tree FieldFilterTree
-	for _, branch_config := range config.FilterTree {
-		head, err := NewFieldFilter(branch_config.Head)
-		if err != nil {
-			return nil, err
+	branches := make(map[FieldFilterClauseConfig]*FieldFilterBranch)
+	for _, chain_config := range config.FilterTree {
+		if len(chain_config.Chain) == 0 {
+			return nil, fmt.Errorf("Empty chain config")
 		}
-		var bodies []*FieldFilterBody
-		for _, chain_config := range branch_config.Bodies {
-			classifier, err := NewFieldClassifier(&chain_config.Classifier)
+		head := chain_config.Chain[0]
+		branch, ok := branches[*head]
+		if !ok {
+			branch = new(FieldFilterBranch)
+			filter, err := NewFieldFilter(head)
 			if err != nil {
 				return nil, err
 			}
-			var chain []FieldFilter
-			for _, filter_config := range chain_config.Chain {
-				filter, err := NewFieldFilter(filter_config)
-				if err != nil {
-					return nil, err
-				}
-				chain = append(chain, filter)
-			}
-			bodies = append(bodies, &FieldFilterBody{chain, classifier})
+			branch.Head = filter
+			branches[*head] = branch
+			tree = append(tree, branch)
 		}
-		tree = append(tree, &FieldFilterBranch{head, bodies})
+		var chain []FieldFilter
+		for i := 1; i < len(chain_config.Chain); i++ {
+			filter, err := NewFieldFilter(chain_config.Chain[i])
+			if err != nil {
+				return nil, err
+			}
+			chain = append(chain, filter)
+		}
+		classifier, err := NewFieldClassifier(&chain_config.Classifier)
+		if err != nil {
+			return nil, err
+		}
+		branch.Bodies = append(branch.Bodies, &FieldFilterBody{chain, classifier})
 	}
 	return tree, nil
 }
