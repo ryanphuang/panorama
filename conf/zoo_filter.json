@@ -25,8 +25,8 @@
                 {
                     "Field": "tag_context",
                     "Operator": "~",
-                    "Pattern": "WorkerReceiver\\[myid=(?P<rid>\\d)\\]",
-                    "CaptureResult": true
+                    "Pattern": "WorkerReceiver\\[myid=\\d\\]",
+                    "CaptureResult": false
                 }
             ]
         },
@@ -35,8 +35,8 @@
                 {
                     "Field": "tag_context",
                     "Operator": "~",
-                    "Pattern": "WorkerSender\\[myid=(?P<rid>\\d)\\]",
-                    "CaptureResult": true
+                    "Pattern": "WorkerSender\\[myid=\\d\\]",
+                    "CaptureResult": false
                 }
             ]
         },
