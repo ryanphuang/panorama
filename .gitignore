@@ -5,3 +5,4 @@ hs.cfg
 deephealth.out
 deephealth.pid
 logtail.log
+logtail.err
