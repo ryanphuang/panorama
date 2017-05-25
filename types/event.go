@@ -2,6 +2,8 @@ package types
 
 import (
 	"time"
+
+	pb "deephealth/build/gen"
 )
 
 type Event struct {
@@ -9,6 +11,8 @@ type Event struct {
 	Id      string
 	Subject string
 	Context string
+	Status  pb.Status
+	Score   float32
 	Extra   string
 }
 

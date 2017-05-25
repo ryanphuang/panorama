@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"strings"
 	"time"
 
 	pb "deephealth/build/gen"
@@ -126,6 +127,26 @@ func ViewString(view *pb.View) string {
 
 func InferenceString(inf *pb.Inference) string {
 	return fmt.Sprintf("%s ==> %s: %s", inf.Observers, inf.Subject, ObservationString(inf.Observation))
+}
+
+func StatusFromFullStr(status string) pb.Status {
+	status = strings.ToLower(status)
+	switch status {
+	case "na":
+		return pb.Status_NA
+	case "unhealthy":
+		return pb.Status_UNHEALTHY
+	case "healthy":
+		return pb.Status_HEALTHY
+	case "maybe_unhealthy":
+		return pb.Status_MAYBE_UNHEALTHY
+	case "dying":
+		return pb.Status_DYING
+	case "dead":
+		return pb.Status_DEAD
+	default:
+		return pb.Status_INVALID
+	}
 }
 
 func StatusFromStr(status string) pb.Status {

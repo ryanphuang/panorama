@@ -15,6 +15,11 @@ type HealthServerConfig struct {
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
 }
 
+type ClassifierConfig struct {
+	Status string
+	Score  string
+}
+
 type FieldFilterClauseConfig struct {
 	Field         string
 	Operator      string
@@ -23,11 +28,17 @@ type FieldFilterClauseConfig struct {
 }
 
 type FieldFilterChainConfig struct {
-	Filters []*FieldFilterClauseConfig
+	Chain      []*FieldFilterClauseConfig
+	Classifier ClassifierConfig
 }
 
-type FieldFilterPatternConfig struct {
-	Chains []FieldFilterChainConfig
+type FieldFilterBranchConfig struct {
+	Head   *FieldFilterClauseConfig
+	Bodies []*FieldFilterChainConfig
+}
+
+type FieldFilterTreeConfig struct {
+	FilterTree []*FieldFilterBranchConfig
 }
 
 func LoadConfig(path string, config interface{}) error {
