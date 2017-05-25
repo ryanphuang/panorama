@@ -16,7 +16,7 @@ import (
 
 type ZooKeeperPlugin struct {
 	Ensemble     []zkserver
-	FilterConfig *dt.FieldFilterPatternConfig
+	FilterConfig *dt.FieldFilterTreeConfig
 	Parser       dt.EventParser
 }
 
@@ -57,7 +57,7 @@ var (
 	tag_host_reg = &du.MRegexp{regexp.MustCompile(TAG_HOST_RE)}
 )
 
-func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, config *dt.FieldFilterPatternConfig) (*ZooKeeperEventParser, error) {
+func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, config *dt.FieldFilterTreeConfig) (*ZooKeeperEventParser, error) {
 	m1 := make(map[string]string)
 	m2 := make(map[string]string)
 	for _, server := range ensemble {
@@ -120,17 +120,18 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	}
 	result["tag_context"] = tag_context
 	result["tag_subject"] = tag_subject
-	_, ok = self.FilterTree.Eval(result)
+	ret, classifier, ok := self.FilterTree.Eval(result)
 	if !ok {
 		if tag_subject != myid {
-			du.LogD(ztag, "ignore communication related log: %s", line)
+			fmt.Printf("ignore communication related log: %s\n", line)
 		}
 		return nil
 	}
 	if len(tag_subject) == 0 {
 		return nil
 	}
-	fmt.Println(tag_context, tag_subject)
+	status, score := classifier(ret)
+	fmt.Println(tag_context, tag_subject, status, score)
 	timestamp, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
 	if err != nil {
 		return nil
@@ -140,6 +141,8 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 		Id:      self.EntityIdPrefix + myid,
 		Subject: self.EntityIdPrefix + tag_subject,
 		Context: tag_context,
+		Status:  status,
+		Score:   score,
 		Extra:   content,
 	}
 }
@@ -202,7 +205,7 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	if err != nil {
 		return err
 	}
-	filterConfig := new(dt.FieldFilterPatternConfig)
+	filterConfig := new(dt.FieldFilterTreeConfig)
 	err = dt.LoadConfig(*zookeeperFilter, filterConfig)
 	if err != nil {
 		return err
