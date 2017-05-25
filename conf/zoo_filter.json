@@ -80,8 +80,8 @@
           "Chain": [
             {
               "Field": "content",
-              "Operator": "~",
-              "Pattern": "^Slow serializing node .*$",
+              "Operator": "(~",
+              "Pattern": "['^Slow serializing node .*$', '^Unexpected exception causing shutdown .*$', '.* GOODBYE .*$']",
               "CaptureResult": false
             }
           ],
@@ -94,50 +94,8 @@
           "Chain": [
             {
               "Field": "content",
-              "Operator": "~",
-              "Pattern": "^Unexpected exception causing shutdown .*$",
-              "CaptureResult": false
-            }
-          ],
-          "Classifier": {
-            "Status": "unhealthy",
-            "Score": "20"
-          }
-        },
-        {
-          "Chain": [
-            {
-              "Field": "content",
-              "Operator": "~",
-              "Pattern": ".* GOODBYE .*$",
-              "CaptureResult": false
-            }
-          ],
-          "Classifier": {
-            "Status": "unhealthy",
-            "Score": "20"
-          }
-        },
-        {
-          "Chain": [
-            {
-              "Field": "content",
-              "Operator": "~",
-              "Pattern": "^Synchronizing with Follower sid: .*$",
-              "CaptureResult": false
-            }
-          ],
-          "Classifier": {
-            "Status": "healthy",
-            "Score": "90"
-          }
-        },
-        {
-          "Chain": [
-            {
-              "Field": "content",
-              "Operator": "~",
-              "Pattern": "^Received NEWLEADER-ACK message .*$",
+              "Operator": "(~",
+              "Pattern": "['^Synchronizing with Follower sid: .*$', '^Received NEWLEADER-ACK message .*$']",
               "CaptureResult": false
             }
           ],
