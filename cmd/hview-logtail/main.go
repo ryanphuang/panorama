@@ -23,7 +23,13 @@ var (
 	server       = flag.String("server", "localhost:6688", "Address of health server to report events to (Required)")
 )
 
-var lastReportTime = make(map[string]time.Time)
+type report_key struct {
+	subject string
+	status  pb.Status
+	score   int32
+}
+
+var lastReportTime = make(map[report_key]time.Time)
 var ipEntities = make(map[string]string)
 var staleCutoff float64
 var mergeCutoff float64
@@ -34,9 +40,10 @@ func usage() {
 }
 
 func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
+	key := report_key{event.Subject, event.Status, int32(event.Score)}
 	if mergeCutoff > 0 {
-		ts, ok := lastReportTime[event.Subject]
-		if ok && time.Now().Sub(ts).Seconds() < mergeCutoff {
+		ts, ok := lastReportTime[key]
+		if ok && event.Time.Sub(ts).Seconds() < mergeCutoff {
 			fmt.Printf("report for %s is too frequent, skip\n", event.Subject)
 			return nil
 		}
@@ -48,7 +55,7 @@ func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
 		Observation: observation,
 	}
 	reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
-	lastReportTime[event.Subject] = time.Now()
+	lastReportTime[key] = event.Time
 	if err != nil {
 		return err
 	}
