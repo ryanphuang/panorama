@@ -207,7 +207,6 @@ func NewFieldClassifier(config *ClassifierConfig) (FieldClassifier, error) {
 
 func NewFieldFilterTree(config *FieldFilterTreeConfig) (FieldFilterTree, error) {
 	var tree FieldFilterTree
-	fmt.Println("parsing")
 	for _, branch_config := range config.FilterTree {
 		head, err := NewFieldFilter(branch_config.Head)
 		if err != nil {
