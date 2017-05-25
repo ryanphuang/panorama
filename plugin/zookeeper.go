@@ -123,7 +123,7 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	ret, classifier, ok := self.FilterTree.Eval(result)
 	if !ok {
 		if tag_subject != myid {
-			fmt.Printf("ignore communication related log: %s\n", line)
+			fmt.Fprintf(os.Stderr, "ignore communication related log: %s\n", line)
 		}
 		return nil
 	}

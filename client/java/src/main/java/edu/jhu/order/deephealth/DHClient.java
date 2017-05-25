@@ -96,7 +96,7 @@ public class DHClient
     try {
       reply = blockingStub.observe(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("RCP failed: " + e.getStatus());
+      logger.warning("Observe RPC failed: " + e.getStatus());
       return false;
     }
     boolean ok = reply.getSuccess();
@@ -112,7 +112,7 @@ public class DHClient
     try {
       reply = blockingStub.stopObserving(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("RCP failed: " + e.getStatus());
+      logger.warning("StopObserving RPC failed: " + e.getStatus());
       return false;
     }
     boolean ok = reply.getSuccess();
@@ -138,7 +138,7 @@ public class DHClient
     try {
       reply = blockingStub.submitReport(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("RCP failed: " + e.getStatus());
+      logger.warning("SubmitReport RPC failed: " + e.getStatus());
       return null;
     }
     SubmitReportReply.Status status = reply.getResult();
@@ -154,7 +154,7 @@ public class DHClient
     try {
       report = blockingStub.getLatestReport(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("RPC failed: " + e.getStatus());
+      logger.warning("GetLatestReport RPC failed: " + e.getStatus());
       return null;
     }
     logger.info("Result: " + report);
@@ -171,7 +171,7 @@ public class DHClient
     try {
       reply = blockingStub.ping(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("Ping failed: " + e.getStatus());
+      logger.warning("Ping RPC failed: " + e.getStatus());
       return -1;
     }
     long result = Timestamps.toMillis(reply.getTime());
