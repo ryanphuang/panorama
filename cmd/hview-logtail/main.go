@@ -20,7 +20,7 @@ var (
 	staleSeconds = flag.Int("stale", 5*60, "Cutoff in seconds to skip stale events. -1 means no check for staleness.")
 	mergeSeconds = flag.Int("merge", 5, "Do not repeated report event for a subject within the given time.")
 	log          = flag.String("log", "", "Log file to watch for (Required)")
-	server       = flag.String("server", "localhost:6688", "Address of health server to report events to (Required)")
+	server       = flag.String("server", "", "Address of health server to report events to (Required)")
 )
 
 type report_key struct {
@@ -105,7 +105,16 @@ func main() {
 
 	var client pb.HealthServiceClient
 	if *report {
-		conn, err := grpc.Dial(*server, grpc.WithInsecure())
+		addr := *server
+		if len(*server) == 0 {
+			host, err := os.Hostname()
+			if err != nil {
+				fmt.Printf("Fail to get host name. Use localhost instead")
+				host = "localhost"
+			}
+			addr = host + ":6688"
+		}
+		conn, err := grpc.Dial(addr, grpc.WithInsecure())
 		if err != nil {
 			panic(fmt.Sprintf("Could not connect to %s: %v", *server, err))
 		}
