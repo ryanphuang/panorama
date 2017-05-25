@@ -55,10 +55,10 @@ func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
 		Observation: observation,
 	}
 	reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
-	lastReportTime[key] = event.Time
 	if err != nil {
 		return err
 	}
+	lastReportTime[key] = event.Time
 	switch reply.Result {
 	case pb.SubmitReportReply_ACCEPTED:
 		fmt.Printf("Accepted report %s\n", event)
@@ -127,7 +127,10 @@ func main() {
 			}
 			fmt.Println(event)
 			if *report {
-				reportEvent(client, event)
+				err = reportEvent(client, event)
+				if err != nil {
+					fmt.Printf("Error in reporting event: %s\n", err)
+				}
 			}
 		}
 	}
