@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -94,6 +95,7 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	if len(tag_result) != 0 { // found potential EID in tag
 		_, ok := self.EIdAddrMap[tag_result["id"]]
 		if !ok {
+			fmt.Fprintf(os.Stderr, "Tag id not in ensemble in log: %s\n", line)
 			return nil
 		}
 		tag_subject = tag_result["id"] // EID in ensemble, assign it as tag subject
@@ -107,6 +109,7 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 			} else {
 				tag_subject, ok = self.AddrEIdMap[tag_result["host"]]
 				if !ok {
+					fmt.Fprintf(os.Stderr, "Tag host not in ensemble in log: %s\n", line)
 					return nil
 				}
 			}
@@ -128,16 +131,23 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 		return nil
 	}
 	if len(tag_subject) == 0 {
+		fmt.Fprintf(os.Stderr, "Empty tag subject in log: %s\n", line)
 		return nil
 	}
 	status, score := classifier(ret)
 	fmt.Println(tag_context, tag_subject, status, score)
 	timestamp, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error in parsing timestamp %s: %s\n", result["time"], err)
+		return nil
+	}
+	ms, err := strconv.Atoi(result["time"][20:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error in parsing timestamp %s: %s\n", result["time"], err)
 		return nil
 	}
 	return &dt.Event{
-		Time:    timestamp,
+		Time:    timestamp.Add(time.Millisecond * time.Duration(ms)),
 		Id:      self.EntityIdPrefix + myid,
 		Subject: self.EntityIdPrefix + tag_subject,
 		Context: tag_context,
