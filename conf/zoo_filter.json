@@ -1,11 +1,92 @@
 {
-    "TagContextPattern": {
-        "WorkerReceiver[myid=%d]": "",
-        "WorkerSender[myid=%d]": "",
-        "LearnerHandler-/": "^Slow serializing node .*$",
-        "RecvWorker": "",
-        "SendWorker": "",
-        "Snapshot Thread": "^Slow serializing node .*$",
-        "SyncThread": "^Too busy to snap, skipping.*$"
-    }
+    "Chains": [
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "==",
+                    "Pattern": "RecvWorker",
+                    "CaptureResult": false
+                }
+            ]
+        },
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "==",
+                    "Pattern": "SendWorker",
+                    "CaptureResult": false
+                }
+            ]
+        },
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "~",
+                    "Pattern": "WorkerReceiver\\[myid=(?P<rid>\\d)\\]",
+                    "CaptureResult": true
+                }
+            ]
+        },
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "~",
+                    "Pattern": "WorkerSender\\[myid=(?P<rid>\\d)\\]",
+                    "CaptureResult": true
+                }
+            ]
+        },
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "~",
+                    "Pattern": "LearnerHandler-/",
+                    "CaptureResult": false
+                },
+                {
+                    "Field": "content",
+                    "Operator": "~",
+                    "Pattern": "^Slow serializing node .*$",
+                    "CaptureResult": false
+                }
+            ]
+        },
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "==",
+                    "Pattern": "Snapshot Thread",
+                    "CaptureResult": false
+                },
+                {
+                    "Field": "content",
+                    "Operator": "==",
+                    "Pattern": "^Slow serializing node .*$",
+                    "CaptureResult": false
+                }
+            ]
+        },
+        {
+            "Filters": [
+                {
+                    "Field": "tag_context",
+                    "Operator": "==",
+                    "Pattern": "SyncThread",
+                    "CaptureResult": false
+                },
+                {
+                    "Field": "content",
+                    "Operator": "==",
+                    "Pattern": "^Too busy to snap, skipping.*$",
+                    "CaptureResult": false
+                }
+            ]
+        }
+    ]
 }
