@@ -16,15 +16,15 @@ import (
 
 type ZooKeeperPlugin struct {
 	Ensemble     []zkserver
-	FilterConfig *EventFilterConfig
+	FilterConfig *dt.FieldFilterPatternConfig
 	Parser       dt.EventParser
 }
 
 type ZooKeeperEventParser struct {
-	EntityIdPrefix    string
-	EIdAddrMap        map[string]string
-	AddrEIdMap        map[string]string
-	TagContextPattern *du.MPatternMix
+	EntityIdPrefix string
+	EIdAddrMap     map[string]string
+	AddrEIdMap     map[string]string
+	FilterTree     dt.FieldFilterTree
 }
 
 type zkserver struct {
@@ -57,20 +57,23 @@ var (
 	tag_host_reg = &du.MRegexp{regexp.MustCompile(TAG_HOST_RE)}
 )
 
-func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, tag_context_patterns map[string]string) *ZooKeeperEventParser {
+func NewZooKeeperEventParser(idprefix string, ensemble []zkserver, config *dt.FieldFilterPatternConfig) (*ZooKeeperEventParser, error) {
 	m1 := make(map[string]string)
 	m2 := make(map[string]string)
 	for _, server := range ensemble {
 		m1[server.eid] = server.address
 		m2[server.address] = server.eid
 	}
-	m3 := du.NewMPatternMix(tag_context_patterns)
-	return &ZooKeeperEventParser{
-		EntityIdPrefix:    idprefix,
-		EIdAddrMap:        m1,
-		AddrEIdMap:        m2,
-		TagContextPattern: m3,
+	m3, err := dt.NewFieldFilterTree(config)
+	if err != nil {
+		return nil, err
 	}
+	return &ZooKeeperEventParser{
+		EntityIdPrefix: idprefix,
+		EIdAddrMap:     m1,
+		AddrEIdMap:     m2,
+		FilterTree:     m3,
+	}, nil
 }
 
 func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
@@ -115,8 +118,10 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 			tag_context = tag
 		}
 	}
-	fmt.Println(tag_context)
-	if self.TagContextPattern.IsMatch(tag_context, content) {
+	result["tag_context"] = tag_context
+	result["tag_subject"] = tag_subject
+	_, ok = self.FilterTree.Eval(result)
+	if !ok {
 		if tag_subject != myid {
 			du.LogD(ztag, "ignore communication related log: %s", line)
 		}
@@ -125,6 +130,7 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	if len(tag_subject) == 0 {
 		return nil
 	}
+	fmt.Println(tag_context, tag_subject)
 	timestamp, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
 	if err != nil {
 		return nil
@@ -196,7 +202,7 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	if err != nil {
 		return err
 	}
-	filterConfig := new(EventFilterConfig)
+	filterConfig := new(dt.FieldFilterPatternConfig)
 	err = dt.LoadConfig(*zookeeperFilter, filterConfig)
 	if err != nil {
 		return err
@@ -208,7 +214,11 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 }
 
 func (self *ZooKeeperPlugin) Init() error {
-	self.Parser = NewZooKeeperEventParser(EID_PREFIX, self.Ensemble, self.FilterConfig.TagContextPattern)
+	parser, err := NewZooKeeperEventParser(EID_PREFIX, self.Ensemble, self.FilterConfig)
+	if err != nil {
+		return err
+	}
+	self.Parser = parser
 	return nil
 }
 
