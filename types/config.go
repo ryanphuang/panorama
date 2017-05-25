@@ -15,19 +15,19 @@ type HealthServerConfig struct {
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
 }
 
-type EventFilterClauseConfig struct {
+type FieldFilterClauseConfig struct {
 	Field         string
 	Operator      string
 	Pattern       string
 	CaptureResult bool // whether to capture filter result or just return the decision
 }
 
-type EventFilterChainConfig struct {
-	Filters []*EventFilterClauseConfig
+type FieldFilterChainConfig struct {
+	Filters []*FieldFilterClauseConfig
 }
 
-type EventFilterPatternConfig struct {
-	Chains []EventFilterChainConfig
+type FieldFilterPatternConfig struct {
+	Chains []FieldFilterChainConfig
 }
 
 func LoadConfig(path string, config interface{}) error {
