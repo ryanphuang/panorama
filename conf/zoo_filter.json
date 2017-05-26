@@ -44,6 +44,7 @@
         }
       ],
       "Classifier": {
+        "Context": "WorkerSender",
         "Subject": "<content_host>",
         "Status": "unhealthy",
         "Score": "20"
@@ -65,6 +66,7 @@
         }
       ],
       "Classifier": {
+        "Context": "LearnerHandler",
         "Status": "unhealthy",
         "Score": "20"
       }
@@ -85,6 +87,7 @@
         }
       ],
       "Classifier": {
+        "Context": "LearnerHandler",
         "Status": "healthy",
         "Score": "90"
       }
@@ -105,6 +108,7 @@
         }
       ],
       "Classifier": {
+        "Context": "Snapshot",
         "Status": "unhealthy",
         "Score": "20"
       }
