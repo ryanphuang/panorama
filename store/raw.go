@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MaxReportPerView = 5 // maximum number of reports to store for a given view
+	MaxReportPerView = 10 // maximum number of reports to store for a given view
 	tag              = "store"
 )
 

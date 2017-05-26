@@ -38,6 +38,7 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs := new(HealthGServer)
 	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
+	storage.AddSubject(config.Id) // always interested in reports about myself
 	gs.storage = storage
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
