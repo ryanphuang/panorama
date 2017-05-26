@@ -33,25 +33,18 @@
         {
           "Field": "tag_context",
           "Operator": "~",
-          "Pattern": "WorkerReceiver\\[myid=\\d+\\]",
-          "CaptureResult": false
-        }
-      ],
-      "Classifier": {
-        "Status": "unhealthy",
-        "Score": "20"
-      }
-    },
-    {
-      "Chain": [
-        {
-          "Field": "tag_context",
-          "Operator": "~",
           "Pattern": "WorkerSender\\[myid=\\d+\\]",
           "CaptureResult": false
+        },
+        {
+          "Field": "content",
+          "Operator": "~",
+          "Pattern": "Cannot open channel to (?P<rid>\\d+) at election address .*/(?P<host>[^:]+):(?P<port>\\d+)",
+          "CaptureResult": true
         }
       ],
       "Classifier": {
+        "Subject": "<content_host>",
         "Status": "unhealthy",
         "Score": "20"
       }
@@ -134,6 +127,27 @@
       "Classifier": {
         "Status": "unhealthy",
         "Score": "20"
+      }
+    },
+    {
+      "Chain": [
+        {
+          "Field": "class",
+          "Operator": "==",
+          "Pattern": "QuorumCnxManager$Listener",
+          "CaptureResult": false
+        },
+        {
+          "Field": "content",
+          "Operator": "~",
+          "Pattern": "Received connection request /(?P<host>[^:]+):(?P<port>\\d+)",
+          "CaptureResult": true
+        }
+      ],
+      "Classifier": {
+        "Subject": "<content_host>",
+        "Status": "healthy",
+        "Score": "90"
       }
     }
   ]
