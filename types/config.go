@@ -16,8 +16,9 @@ type HealthServerConfig struct {
 }
 
 type ClassifierConfig struct {
-	Status string
-	Score  string
+	Subject string
+	Status  string
+	Score   string
 }
 
 type FieldFilterClauseConfig struct {
