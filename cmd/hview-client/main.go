@@ -101,7 +101,7 @@ func runCmd(args []string) bool {
 				}
 			}
 			if err != nil {
-				logError(err)
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				return false
 			}
 		}
@@ -117,7 +117,7 @@ func runCmd(args []string) bool {
 			fmt.Println("Failed")
 		}
 		if err != nil {
-			logError(err)
+			fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 			return false
 		}
 	case "get":
@@ -137,7 +137,7 @@ func runCmd(args []string) bool {
 					fmt.Println(report)
 					return false
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		case "view":
@@ -151,7 +151,7 @@ func runCmd(args []string) bool {
 					dt.DumpView(os.Stdout, view)
 					return false
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		case "panorama":
@@ -165,7 +165,7 @@ func runCmd(args []string) bool {
 					dt.DumpPanorama(os.Stdout, pano)
 					return false
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		case "inference":
@@ -179,7 +179,7 @@ func runCmd(args []string) bool {
 					fmt.Println(dt.InferenceString(inference))
 					return false
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		default:
@@ -202,7 +202,7 @@ func runCmd(args []string) bool {
 					}
 					return false
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		case "inference":
@@ -215,7 +215,7 @@ func runCmd(args []string) bool {
 					}
 					return false
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		default:
@@ -237,7 +237,7 @@ func runCmd(args []string) bool {
 						fmt.Printf("%s\t%s\n", subject, t)
 					}
 				} else {
-					logError(err)
+					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
 				}
 			}
 		default:

@@ -129,6 +129,9 @@ func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReport
 
 func (self *HealthGServer) GetPanorama(ctx context.Context, in *pb.GetPanoramaRequest) (*pb.Panorama, error) {
 	panorama, _ := self.storage.GetPanorama(in.Subject)
+	if panorama == nil {
+		return nil, fmt.Errorf("No panorama for %s", in.Subject)
+	}
 	return panorama, nil
 }
 
