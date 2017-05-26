@@ -12,7 +12,14 @@ import (
 
 type FieldFilter func(fields map[string]string) (map[string]string, bool)
 
-type FieldClassifier func(result map[string]string) (string, pb.Status, float32)
+type FieldClassifierResult struct {
+	Context string
+	Subject string
+	Status  pb.Status
+	Score   float32
+}
+
+type FieldClassifier func(result map[string]string) *FieldClassifierResult
 
 type FieldFilterBody struct {
 	Chain      []FieldFilter
@@ -206,11 +213,12 @@ func NewFieldClassifier(config *ClassifierConfig) (FieldClassifier, error) {
 		subject = subject[1 : len(subject)-1]
 		index_subject = true
 	}
-	return func(result map[string]string) (string, pb.Status, float32) {
+	context := config.Context
+	return func(result map[string]string) *FieldClassifierResult {
 		if index_subject {
-			return result[subject], status, score32
+			return &FieldClassifierResult{context, result[subject], status, score32}
 		}
-		return subject, status, score32
+		return &FieldClassifierResult{context, subject, status, score32}
 	}, nil
 }
 

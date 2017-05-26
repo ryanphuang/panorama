@@ -16,6 +16,7 @@ type HealthServerConfig struct {
 }
 
 type ClassifierConfig struct {
+	Context string
 	Subject string
 	Status  string
 	Score   string

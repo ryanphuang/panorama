@@ -130,17 +130,23 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 		}
 		return nil
 	}
-	filter_subject, status, score := classifier(ret)
-	fmt.Println(tag_context, tag_subject, filter_subject, status, score)
+	cres := classifier(ret)
+	fmt.Println(tag_context, tag_subject, cres.Subject, cres.Status, cres.Score)
 	var subject string
-	if len(filter_subject) != 0 {
-		subject, ok = self.AddrEIdMap[filter_subject]
+	var context string
+	if len(cres.Subject) != 0 {
+		subject, ok = self.AddrEIdMap[cres.Subject]
 		if !ok {
 			fmt.Fprintf(os.Stderr, "Filter host not in ensemble in log: %s\n", line)
 			return nil
 		}
 	} else {
 		subject = tag_subject
+	}
+	if len(cres.Context) != 0 {
+		context = cres.Context
+	} else {
+		context = tag_context
 	}
 	if len(subject) == 0 {
 		fmt.Fprintf(os.Stderr, "Empty subject in log: %s\n", line)
@@ -160,9 +166,9 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 		Time:    timestamp.Add(time.Millisecond * time.Duration(ms)),
 		Id:      self.EntityIdPrefix + myid,
 		Subject: self.EntityIdPrefix + subject,
-		Context: tag_context,
-		Status:  status,
-		Score:   score,
+		Context: context,
+		Status:  cres.Status,
+		Score:   cres.Score,
 		Extra:   content,
 	}
 }
