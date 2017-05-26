@@ -145,6 +145,7 @@
         }
       ],
       "Classifier": {
+        "Context": "QuorumListener",
         "Subject": "<content_host>",
         "Status": "healthy",
         "Score": "90"
