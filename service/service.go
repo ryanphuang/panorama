@@ -124,6 +124,9 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 
 func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.Report, error) {
 	report := self.storage.GetLatestReport(in.Subject)
+	if report == nil {
+		return nil, fmt.Errorf("No report for %s", in.Subject)
+	}
 	return report, nil
 }
 
@@ -137,6 +140,9 @@ func (self *HealthGServer) GetPanorama(ctx context.Context, in *pb.GetPanoramaRe
 
 func (self *HealthGServer) GetView(ctx context.Context, in *pb.GetViewRequest) (*pb.View, error) {
 	view, _ := self.storage.GetView(in.Subject, in.Observer)
+	if view == nil {
+		return nil, fmt.Errorf("No view for %s", in.Subject)
+	}
 	return view, nil
 }
 
