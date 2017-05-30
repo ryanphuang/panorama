@@ -11,9 +11,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	dh "deephealth"
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 const (
@@ -75,7 +75,7 @@ func TestMain(m *testing.M) {
 			Id:       "XFE_1",
 			Subjects: subjects,
 		}
-		dh.SetLogLevel(dh.ErrorLevel)
+		du.SetLogLevel(du.ErrorLevel)
 		gs := NewHealthGServer(config)
 		errch := make(chan error)
 		gs.Start(errch)
