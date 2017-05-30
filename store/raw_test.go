@@ -8,12 +8,12 @@ import (
 
 	pb "deephealth/build/gen"
 
-	dh "deephealth"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 func TestAddSubject(t *testing.T) {
-	dh.SetLogLevel(dh.InfoLevel)
+	du.SetLogLevel(du.InfoLevel)
 	store := NewRawHealthStorage("TS_1", "TS_2")
 	metrics := map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 100}}
 	report := dt.NewReport("FE_2", "TS_3", metrics)
@@ -35,7 +35,7 @@ func TestAddSubject(t *testing.T) {
 }
 
 func TestAddReport(t *testing.T) {
-	dh.SetLogLevel(dh.InfoLevel)
+	du.SetLogLevel(du.InfoLevel)
 	subjects := []string{"TS_1", "TS_2", "TS_3", "TS_4"}
 	smap := make(map[string]bool)
 	for _, s := range subjects {
@@ -85,7 +85,7 @@ func TestAddReport(t *testing.T) {
 }
 
 func TestRecentReport(t *testing.T) {
-	dh.SetLogLevel(dh.InfoLevel)
+	du.SetLogLevel(du.InfoLevel)
 	store := NewRawHealthStorage("TS_1", "TS_2")
 
 	metrics := map[string]*pb.Value{"cpu": &pb.Value{pb.Status_HEALTHY, 100}}
