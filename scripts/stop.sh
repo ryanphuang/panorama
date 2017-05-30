@@ -16,10 +16,10 @@ fi
 kill -9 $dh_pid
 
 if [ $? -eq 0 ]; then
-  echo "Stopped deep health server"
+  echo "Stopped deep health server (PID $dh_pid)"
   rm deephealth.pid
 else
-  echo "Failed to stop deep health server"
+  echo "Failed to stop deep health server (PID $dh_pid)"
 fi
 
 pkill -9 hview-server 2>/dev/null
