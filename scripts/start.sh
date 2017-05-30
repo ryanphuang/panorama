@@ -22,7 +22,7 @@ dh_pid=$!
 sleep 1
 if ps -p$dh_pid > /dev/null; then
   echo $dh_pid > deephealth.pid
-  echo "Deep health server started with PID $cdfs_pid"
+  echo "Deep health server started with PID $dh_pid"
 else
   echo "Deep health server has exited"
 fi
