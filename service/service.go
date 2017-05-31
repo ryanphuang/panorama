@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	stag = "service"
+	stag         = "service"
+	HANDLE_START = 10000
 )
 
 type ObserverModule struct {
@@ -94,7 +95,7 @@ func (self *HealthGServer) Stop(graceful bool) error {
 }
 
 func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
-	var max_handle uint64 = 0
+	var max_handle uint64 = HANDLE_START
 	for handle, module := range self.handles {
 		if module.Module == in.Module && module.Observer == in.Observer {
 			return &pb.RegisterReply{handle}, nil
@@ -111,6 +112,11 @@ func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest)
 
 func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
 	// TODO: validate submission handles here
+	_, ok := self.handles[in.Handle]
+	if !ok {
+		return nil, fmt.Errorf("Invalid submission handle")
+	}
+
 	report := in.Report
 	var result pb.SubmitReportReply_Status
 	rc, err := self.storage.AddReport(report, false) // never ignore local reports
