@@ -6,7 +6,7 @@ if [ $# -ne 1 ];then
 fi
 
 if [ "$1" == "start" ]; then
-  hview-logtail -stale=-1 -log ~/software/zookeeper/zookeeper.out zookeeper --ensemble ~/software/zookeeper/conf/zoo.cfg  --filter conf/zoo_filter.json > logtail.log 2>logtail.err &
+  hview-logtail -stale=-1 -log ~/software/zookeeper/zookeeper.out zookeeper --ensemble ~/software/zookeeper/conf/zoo.cfg  --myid /mnt/fuser/zookeeper/myid --filter conf/zoo_filter.json > logtail.log 2>logtail.err &
 elif [ "$1" == "stop" ]; then
   pkill -9 hview-logtail
 else
