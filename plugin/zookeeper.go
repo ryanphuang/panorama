@@ -254,7 +254,8 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(ensemble, filterConfig)
+	fmt.Println(myid, ensemble, filterConfig)
+	self.MyId = myid
 	self.Ensemble = ensemble
 	self.FilterConfig = filterConfig
 	return nil
