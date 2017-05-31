@@ -68,11 +68,13 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 		}
 		client, err := self.getOrMakeClient(peer)
 		if err != nil {
+			du.LogE(etag, "failed to get client for %s", peer)
 			ferr = err
 			continue
 		}
 		reply, err := client.LearnReport(context.Background(), request)
 		if err != nil {
+			du.LogE(etag, "failed to propagate report about %s to %s", report.Subject, peer)
 			ferr = err
 			continue
 		}
