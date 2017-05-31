@@ -131,6 +131,9 @@ func main() {
 		reportHandle = reply.Handle
 	}
 
+	fmt.Println("Sleeping 3 seconds to stabilize")
+	time.Sleep(3 * time.Second)
+
 	staleCutoff = float64(*staleSeconds)
 	mergeCutoff = float64(*mergeSeconds)
 
