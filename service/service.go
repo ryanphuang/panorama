@@ -20,15 +20,17 @@ import (
 )
 
 const (
-	stag         = "service"
-	HANDLE_START = 10000
+	stag          = "service"
+	HANDLE_START  = 10000
+	HOLD_LIST_LEN = 3 // hold at most 3 reports
 )
 
 type HealthGServer struct {
 	dt.HealthServerConfig
-	storage   dt.HealthStorage
-	inference dt.HealthInference
-	exchange  dt.HealthExchange
+	storage     dt.HealthStorage
+	inference   dt.HealthInference
+	exchange    dt.HealthExchange
+	hold_buffer *store.Cache
 
 	handles map[uint64]*dt.ObserverModule
 	rch     chan *pb.Report
@@ -42,6 +44,9 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	storage := store.NewRawHealthStorage(config.Subjects...)
 	gs.storage = storage
 	gs.handles = make(map[uint64]*dt.ObserverModule)
+	// hold ignored entries for 2 minutes
+	// TODO: make this configurable
+	gs.hold_buffer = store.NewCache(2 * time.Minute)
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs
@@ -119,12 +124,12 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 	rc, err := self.storage.AddReport(report, false) // never ignore local reports
 	switch rc {
 	case store.REPORT_IGNORED:
-		result = pb.SubmitReportReply_IGNORED
+		return nil, fmt.Errorf("Should not ignore local report. Probably due to a bug")
 	case store.REPORT_FAILED:
 		result = pb.SubmitReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
-		go self.AnalyzeReport(report)
+		go self.AnalyzeReport(report, true)
 		go self.exchange.Propagate(report)
 	}
 	return &pb.SubmitReportReply{Result: result}, err
@@ -138,11 +143,12 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 	switch rc {
 	case store.REPORT_IGNORED:
 		result = pb.LearnReportReply_IGNORED
+		self.hold_buffer.Set(report.Subject, report) // put this report on hold for a while
 	case store.REPORT_FAILED:
 		result = pb.LearnReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.LearnReportReply_ACCEPTED
-		go self.AnalyzeReport(report)
+		go self.AnalyzeReport(report, false)
 		go self.exchange.Interested(in.Source.Id, report.Subject)
 	}
 	return &pb.LearnReportReply{Result: result}, err
@@ -225,7 +231,20 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 	return &pb.PingReply{Result: pb.PingReply_GOOD, Time: pnow}, nil
 }
 
-func (self *HealthGServer) AnalyzeReport(report *pb.Report) {
+func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
+	if check_hold {
+		item, ok := self.hold_buffer.Get(report.Subject).(*pb.Report)
+		if ok {
+			du.LogD(stag, "found recent report about %s in hold buffer", report.Subject)
+			_, err := self.storage.AddReport(item, false)
+			if err != nil {
+				du.LogE(stag, "fail to add hold buffer report")
+			} else {
+				du.LogD(stag, "hold buffer report successfully added back to storage")
+				self.hold_buffer.Delete(report.Subject) // clear the report from hold buffer
+			}
+		}
+	}
 	self.rch <- report
 	du.LogD(stag, "sent report for %s for inference", report.Subject)
 	/*
