@@ -41,6 +41,7 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
 	gs.storage = storage
+	gs.handles = make(map[uint64]*dt.ObserverModule)
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs
