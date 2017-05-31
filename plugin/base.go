@@ -11,4 +11,5 @@ type LogTailPlugin interface {
 	ValidateFlags() error
 	Init() error
 	ProvideEventParser() dt.EventParser
+	ProvideObserverModule() dt.ObserverModule
 }

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"regexp"
@@ -17,6 +18,7 @@ import (
 
 type ZooKeeperPlugin struct {
 	Ensemble     []zkserver
+	MyId         string
 	FilterConfig *dt.FieldFilterTreeConfig
 	Parser       dt.EventParser
 }
@@ -49,6 +51,7 @@ var (
 	ztag              = "zookeeper-plugin"
 	zookeeperFlagset  = flag.NewFlagSet("zookeeper", flag.ExitOnError)
 	zookeeperEnsemble = zookeeperFlagset.String("ensemble", "conf/zoo.cfg", "ZooKeeper ensemble file to use")
+	zookeeperMyid     = zookeeperFlagset.String("myid", "conf/zoo_myid", "ZooKeeper myid file to use")
 	zookeeperFilter   = zookeeperFlagset.String("filter", "conf/zoo_filter.json", "Filter configuration file to decide which event to report")
 )
 
@@ -231,6 +234,21 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	if err != nil {
 		return err
 	}
+	b, err := ioutil.ReadFile(*zookeeperMyid)
+	if err != nil {
+		return err
+	}
+	myid := string(b)
+	found := false
+	for _, server := range ensemble {
+		if myid == server.eid {
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("My id %s is not in the ensemble", myid)
+	}
 	filterConfig := new(dt.FieldFilterTreeConfig)
 	err = dt.LoadConfig(*zookeeperFilter, filterConfig)
 	if err != nil {
@@ -253,4 +271,8 @@ func (self *ZooKeeperPlugin) Init() error {
 
 func (self *ZooKeeperPlugin) ProvideEventParser() dt.EventParser {
 	return self.Parser
+}
+
+func (self *ZooKeeperPlugin) ProvideObserverModule() dt.ObserverModule {
+	return dt.ObserverModule{Module: "ZooKeeper", Observer: EID_PREFIX + self.MyId}
 }

@@ -33,6 +33,7 @@ var lastReportTime = make(map[report_key]time.Time)
 var ipEntities = make(map[string]string)
 var staleCutoff float64
 var mergeCutoff float64
+var reportHandle uint64
 
 func usage() {
 	fmt.Printf("Usage: %s OPTIONS <plugin> [PLUGIN OPTIONS]...\n\n", os.Args[0])
@@ -54,7 +55,7 @@ func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
 		Subject:     event.Subject,
 		Observation: observation,
 	}
-	reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+	reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: reportHandle, Report: report})
 	if err != nil {
 		return err
 	}
@@ -101,6 +102,8 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+
+	module := plugin.ProvideObserverModule()
 	parser := plugin.ProvideEventParser()
 
 	var client pb.HealthServiceClient
@@ -120,7 +123,14 @@ func main() {
 		}
 		defer conn.Close()
 		client = pb.NewHealthServiceClient(conn)
+
+		reply, err := client.Register(context.Background(), &pb.RegisterRequest{Module: module.Module, Observer: module.Observer})
+		if err != nil {
+			panic(fmt.Sprintf("Fail to register with DeepHealth service: %v", err))
+		}
+		reportHandle = reply.Handle
 	}
+
 	staleCutoff = float64(*staleSeconds)
 	mergeCutoff = float64(*mergeSeconds)
 

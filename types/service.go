@@ -7,6 +7,13 @@ import (
 	pb "deephealth/build/gen"
 )
 
+// Simple tuple about the local observer
+// that will monitor health of a component
+type ObserverModule struct {
+	Module   string
+	Observer string
+}
+
 type HealthStorage interface {
 	// Add a subject to the observing subject list
 	AddSubject(subject string) bool

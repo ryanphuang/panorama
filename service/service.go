@@ -24,18 +24,13 @@ const (
 	HANDLE_START = 10000
 )
 
-type ObserverModule struct {
-	Module   string
-	Observer string
-}
-
 type HealthGServer struct {
 	dt.HealthServerConfig
 	storage   dt.HealthStorage
 	inference dt.HealthInference
 	exchange  dt.HealthExchange
 
-	handles map[uint64]*ObserverModule
+	handles map[uint64]*dt.ObserverModule
 	rch     chan *pb.Report
 	l       net.Listener
 	s       *grpc.Server
@@ -106,7 +101,8 @@ func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest)
 	}
 	max_handle = max_handle + 1
 	self.storage.AddSubject(in.Observer) // should include this local observer into watch list
-	self.handles[max_handle] = &ObserverModule{Module: in.Module, Observer: in.Observer}
+	self.handles[max_handle] = &dt.ObserverModule{Module: in.Module, Observer: in.Observer}
+	du.LogD(stag, "received register request from (%s,%s), assigned handle %d", in.Module, in.Observer, max_handle)
 	return &pb.RegisterReply{max_handle}, nil
 }
 
