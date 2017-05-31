@@ -238,7 +238,7 @@ func (self *ZooKeeperPlugin) ValidateFlags() error {
 	if err != nil {
 		return err
 	}
-	myid := string(b)
+	myid := strings.TrimSpace(string(b))
 	found := false
 	for _, server := range ensemble {
 		if myid == server.eid {
