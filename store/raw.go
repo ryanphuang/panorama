@@ -15,7 +15,7 @@ import (
 
 const (
 	MaxReportPerView = 5 // maximum number of reports to store for a given view
-	tag              = "store"
+	stag             = "store"
 )
 
 const (
@@ -87,7 +87,7 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 	if !ok {
 		if filter {
 			// subject is not in our watch list, ignore the report
-			du.LogI(tag, "%s not in watch list, ignore report...", report.Subject)
+			du.LogI(stag, "%s not in watch list, ignore report...", report.Subject)
 			self.mu.Unlock()
 			return REPORT_IGNORED, nil
 		} else {
@@ -95,7 +95,7 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 			self.Watchlist[report.Subject] = time.Now()
 		}
 	}
-	du.LogD(tag, "add report for %s from %s...", report.Subject, report.Observer)
+	du.LogD(stag, "add report for %s from %s...", report.Subject, report.Observer)
 	l, ok := self.Locks[report.Subject]
 	if !ok {
 		l = new(sync.Mutex)
@@ -120,12 +120,12 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 			Observations: make([]*pb.Observation, 0, MaxReportPerView),
 		}
 		panorama.Views[report.Observer] = view
-		du.LogD(tag, "create view for %s->%s...", report.Observer, report.Subject)
+		du.LogD(stag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations = append(view.Observations, report.Observation)
-	du.LogD(tag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
+	du.LogD(stag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
 	if len(view.Observations) > MaxReportPerView {
-		du.LogD(tag, "truncating list")
+		du.LogD(stag, "truncating list")
 		view.Observations = view.Observations[1:]
 	}
 	return REPORT_ACCEPTED, nil
