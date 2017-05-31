@@ -38,7 +38,6 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs := new(HealthGServer)
 	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
-	storage.AddSubject(config.Id) // always interested in reports about myself
 	gs.storage = storage
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
@@ -91,6 +90,9 @@ func (self *HealthGServer) Stop(graceful bool) error {
 func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
 	report := in.Report
 	var result pb.SubmitReportReply_Status
+	// TODO: ugly, avoid this with a register API call
+	// to recognize local subject
+	self.storage.AddSubject(report.Observer)         // should include this local observer into watch list
 	rc, err := self.storage.AddReport(report, false) // never ignore local reports
 	switch rc {
 	case store.REPORT_IGNORED:

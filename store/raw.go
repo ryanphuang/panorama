@@ -58,7 +58,9 @@ var _ dt.HealthStorage = new(RawHealthStorage)
 func (self *RawHealthStorage) AddSubject(subject string) bool {
 	self.mu.Lock()
 	_, ok := self.Watchlist[subject]
-	self.Watchlist[subject] = time.Now()
+	if !ok {
+		self.Watchlist[subject] = time.Now()
+	}
 	self.mu.Unlock()
 	return !ok
 }

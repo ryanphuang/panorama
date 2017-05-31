@@ -85,7 +85,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			}
 			ignoreset[peer] = true
 			self.mu.Unlock()
-			du.LogD(etag, "ignore peer %s about subject %s in the future", peer, report.Subject)
+			du.LogD(etag, "ignore report on subject %s from %s in the future", report.Subject, peer)
 		}
 	}
 	return ferr
