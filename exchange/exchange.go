@@ -76,7 +76,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			ferr = err
 			continue
 		}
-		du.LogD(etag, "propagated report to peer %s at %s", peer, addr)
+		du.LogD(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
 		if reply.Result == pb.LearnReportReply_IGNORED {
 			self.mu.Lock()
 			if ignoreset == nil {
