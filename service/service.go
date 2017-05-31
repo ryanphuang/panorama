@@ -23,15 +23,21 @@ const (
 	stag = "service"
 )
 
+type ObserverModule struct {
+	Module   string
+	Observer string
+}
+
 type HealthGServer struct {
 	dt.HealthServerConfig
 	storage   dt.HealthStorage
 	inference dt.HealthInference
 	exchange  dt.HealthExchange
 
-	rch chan *pb.Report
-	l   net.Listener
-	s   *grpc.Server
+	handles map[uint64]*ObserverModule
+	rch     chan *pb.Report
+	l       net.Listener
+	s       *grpc.Server
 }
 
 func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
@@ -87,12 +93,26 @@ func (self *HealthGServer) Stop(graceful bool) error {
 	return nil
 }
 
+func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
+	var max_handle uint64 = 0
+	for handle, module := range self.handles {
+		if module.Module == in.Module && module.Observer == in.Observer {
+			return &pb.RegisterReply{handle}, nil
+		}
+		if handle > max_handle {
+			max_handle = handle
+		}
+	}
+	max_handle = max_handle + 1
+	self.storage.AddSubject(in.Observer) // should include this local observer into watch list
+	self.handles[max_handle] = &ObserverModule{Module: in.Module, Observer: in.Observer}
+	return &pb.RegisterReply{max_handle}, nil
+}
+
 func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
+	// TODO: validate submission handles here
 	report := in.Report
 	var result pb.SubmitReportReply_Status
-	// TODO: ugly, avoid this with a register API call
-	// to recognize local subject
-	self.storage.AddSubject(report.Observer)         // should include this local observer into watch list
 	rc, err := self.storage.AddReport(report, false) // never ignore local reports
 	switch rc {
 	case store.REPORT_IGNORED:

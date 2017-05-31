@@ -16,6 +16,10 @@ service HealthService {
 	// concerning this subject will be ignored
   rpc StopObserving(ObserveRequest) returns (ObserveReply) {}
 
+  // Register a local observer to the health service.
+  // Must be called before SubmitReport.
+  rpc Register(RegisterRequest) returns (RegisterReply) {}
+
 	// Submit a report to the view storage
   rpc SubmitReport(SubmitReportRequest) returns (SubmitReportReply) {}
 
@@ -77,8 +81,18 @@ message LearnReportReply {
   Status result = 1;
 }
 
+message RegisterRequest {
+  string module = 1;   // service module this observer belongs to 
+  string observer = 2;
+}
+
+message RegisterReply {
+  uint64 handle = 1;  
+}
+
 message SubmitReportRequest {
-  Report report = 1;
+  uint64 handle = 1;
+  Report report = 2;
 }
 
 message SubmitReportReply {
