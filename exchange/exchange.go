@@ -30,7 +30,7 @@ type ExchangeProtocol struct {
 	Clients map[string]pb.HealthServiceClient // clients to all peers
 
 	me *pb.Peer
-	mu *sync.Mutex
+	mu *sync.RWMutex
 }
 
 var _ dt.HealthExchange = new(ExchangeProtocol)
@@ -43,19 +43,19 @@ func NewExchangeProtocol(config *dt.HealthServerConfig) *ExchangeProtocol {
 		SkipSubjectPeers: make(map[string]IgnoreSet),
 		Clients:          make(map[string]pb.HealthServiceClient),
 		me:               &pb.Peer{string(config.Id), config.Addr},
-		mu:               &sync.Mutex{},
+		mu:               &sync.RWMutex{},
 	}
 }
 
 func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 	var ferr error
 	request := &pb.LearnReportRequest{Source: self.me, Report: report}
-	self.mu.Lock()
+	self.mu.RLock()
 	ignoreset, ok := self.SkipSubjectPeers[report.Subject]
 	if !ok {
 		ignoreset = nil
 	}
-	self.mu.Unlock()
+	self.mu.RUnlock()
 	for peer, addr := range self.Peers {
 		if peer == self.Id {
 			continue // skip send to self
