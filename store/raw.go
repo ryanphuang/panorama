@@ -198,7 +198,7 @@ func (self *RawHealthStorage) GC(ttl time.Duration) map[string]uint32 {
 			if ri < len(view.Observations) {
 				obs := make([]*pb.Observation, ri, MaxReportPerView+1)
 				for i := 0; i < ri; i++ {
-					obs[ri] = view.Observations[remains[i]]
+					obs[i] = view.Observations[remains[i]]
 				}
 				r1 += len(view.Observations) - ri
 				view.Observations = obs
