@@ -242,7 +242,7 @@ func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
 				if err != nil {
 					du.LogE(stag, "fail to add hold buffer report %s->%s", report.Observer, report.Subject)
 				} else {
-					du.LogD(stag, "hold buffer report %->%s successfully added back to storage, report.Observer, report.Subject")
+					du.LogD(stag, "hold buffer report %s->%s successfully added back to storage", report.Observer, report.Subject)
 				}
 			}
 			self.hold_buffer.Empty(report.Subject) // clear the report from hold buffer
