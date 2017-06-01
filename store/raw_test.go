@@ -148,3 +148,37 @@ func TestRecentReport(t *testing.T) {
 		t.Errorf("Wrong metric in the latest report: %s\n", metric)
 	}
 }
+
+func TestTruncate(t *testing.T) {
+	du.SetLogLevel(du.InfoLevel)
+	store := NewRawHealthStorage("TS_1", "TS_2")
+
+	for i := 0; i < 20; i++ {
+		metrics := map[string]*pb.Value{"cpu": &pb.Value{pb.Status_UNHEALTHY, float32(i)}}
+		report := dt.NewReport("FE_2", "TS_1", metrics)
+		store.AddReport(report, false)
+	}
+	ret := store.GetLatestReport("TS_1")
+	metric, ok := ret.Observation.Metrics["cpu"]
+	if !ok {
+		t.Error("The latest report have a cpu metric")
+	}
+	if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != 19 {
+		t.Errorf("Wrong metric in the latest report: %s\n", metric)
+	}
+	panorama, _ := store.GetPanorama("TS_1")
+	for observer, view := range panorama.Views {
+		if observer != "FE_2" {
+			t.Errorf("Only expecting observations by FE_2, got %s", observer)
+		}
+		if len(view.Observations) != MaxReportPerView {
+			t.Errorf("Expecting observations to be truncated to %d", MaxReportPerView)
+		}
+		for i, ob := range view.Observations {
+			metric, _ := ob.Metrics["cpu"]
+			if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != float32(15+i) {
+				t.Errorf("Expecting metric score of %f, got %f", 15+i, metric.Value.Score)
+			}
+		}
+	}
+}
