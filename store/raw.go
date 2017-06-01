@@ -26,8 +26,7 @@ const (
 )
 
 type RawHealthStorage struct {
-	Tenants   map[string]*pb.Panorama
-	Locks     map[string]*sync.RWMutex
+	Tenants   map[string]*dt.ConcurrentPanorama
 	Watchlist map[string]time.Time
 
 	mu *sync.RWMutex
@@ -35,21 +34,15 @@ type RawHealthStorage struct {
 
 func NewRawHealthStorage(subjects ...string) *RawHealthStorage {
 	store := &RawHealthStorage{
-		Tenants:   make(map[string]*pb.Panorama),
-		Locks:     make(map[string]*sync.RWMutex),
+		Tenants:   make(map[string]*dt.ConcurrentPanorama),
 		Watchlist: make(map[string]time.Time),
 
 		mu: &sync.RWMutex{},
 	}
-	var panorama *pb.Panorama
 	now := time.Now()
 	for _, subject := range subjects {
 		store.Watchlist[subject] = now
-		store.Locks[subject] = new(sync.RWMutex)
-		panorama = new(pb.Panorama)
-		panorama.Subject = subject
-		panorama.Views = make(map[string]*pb.View)
-		store.Tenants[subject] = panorama
+		store.Tenants[subject] = new(dt.ConcurrentPanorama)
 	}
 	return store
 }
@@ -73,7 +66,6 @@ func (self *RawHealthStorage) RemoveSubject(subject string, clean bool) bool {
 	delete(self.Watchlist, subject)
 	if clean {
 		delete(self.Tenants, subject)
-		delete(self.Locks, subject)
 	}
 	return ok
 }
@@ -97,30 +89,27 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 		}
 	}
 	du.LogD(stag, "add report for %s from %s...", report.Subject, report.Observer)
-	l, ok := self.Locks[report.Subject]
+	pano, ok := self.Tenants[report.Subject]
 	if !ok {
-		l = new(sync.RWMutex)
-		self.Locks[report.Subject] = l
-	}
-	panorama, ok := self.Tenants[report.Subject]
-	if !ok {
-		panorama = &pb.Panorama{
-			Subject: report.Subject,
-			Views:   make(map[string]*pb.View),
+		pano = &dt.ConcurrentPanorama{
+			Value: &pb.Panorama{
+				Subject: report.Subject,
+				Views:   make(map[string]*pb.View),
+			},
 		}
-		self.Tenants[report.Subject] = panorama
+		self.Tenants[report.Subject] = pano
 	}
 	self.mu.Unlock()
-	l.Lock()
-	defer l.Unlock()
-	view, ok := panorama.Views[report.Observer]
+	pano.Lock()
+	defer pano.Unlock()
+	view, ok := pano.Value.Views[report.Observer]
 	if !ok {
 		view = &pb.View{
 			Observer:     report.Observer,
 			Subject:      report.Subject,
 			Observations: make([]*pb.Observation, 0, MaxReportPerView+1),
 		}
-		panorama.Views[report.Observer] = view
+		pano.Value.Views[report.Observer] = view
 		du.LogD(stag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations = append(view.Observations, report.Observation)
@@ -132,59 +121,40 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 	return REPORT_ACCEPTED, nil
 }
 
-func (self *RawHealthStorage) GetPanorama(subject string) (*pb.Panorama, *sync.RWMutex) {
+func (self *RawHealthStorage) GetPanorama(subject string) *dt.ConcurrentPanorama {
 	self.mu.RLock()
-	defer self.mu.RUnlock()
-	_, ok := self.Watchlist[subject]
-	if ok {
-		l, ok := self.Locks[subject]
-		if ok {
-			panorama, ok := self.Tenants[subject]
-			if ok {
-				return panorama, l
-			}
-		}
-	}
-	return nil, nil
+	pano, _ := self.Tenants[subject]
+	self.mu.RUnlock()
+	return pano
 }
 
-func (self *RawHealthStorage) GetView(observer string, subject string) (*pb.View, *sync.RWMutex) {
+func (self *RawHealthStorage) GetView(observer string, subject string) *pb.View {
 	self.mu.RLock()
-	defer self.mu.RUnlock()
-	_, ok := self.Watchlist[subject]
+	pano, ok := self.Tenants[subject]
+	self.mu.RUnlock()
 	if ok {
-		l, ok := self.Locks[subject]
-		if ok {
-			panorama, ok := self.Tenants[subject]
-			if ok {
-				view, ok := panorama.Views[observer]
-				if ok {
-					return view, l
-				}
-			}
-		}
+		pano.RLock()
+		view, _ := pano.Value.Views[observer]
+		pano.RUnlock()
+		return view
 	}
-	return nil, nil
+	return nil
 }
 
 func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 	self.mu.RLock()
-	l, ok := self.Locks[subject]
-	if !ok {
-		return nil
-	}
+	pano, ok := self.Tenants[subject]
 	self.mu.RUnlock()
-	l.RLock()
-	defer l.RUnlock()
-	panorama, ok := self.Tenants[subject]
 	if !ok {
 		return nil
 	}
+	pano.RLock()
+	defer pano.RUnlock()
 	var max_ts *timestamp.Timestamp
 	var recent_ob *pb.Observation
 	var who string
 	first := true
-	for observer, view := range panorama.Views {
+	for observer, view := range pano.Value.Views {
 		for _, val := range view.Observations {
 			if first || dt.CompareTimestamp(max_ts, val.Ts) < 0 {
 				first = false
@@ -205,45 +175,60 @@ func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 }
 
 func (self *RawHealthStorage) GC(ttl time.Duration) map[string]uint32 {
-	self.mu.Lock()
-	defer self.mu.Unlock()
 	expire, err := ptypes.TimestampProto(time.Now().Add(-ttl))
 	if err != nil {
 		du.LogE(stag, "Fail to convert expire timestamp: %s", err)
 		return nil
 	}
+	self.mu.RLock()
+	defer self.mu.RUnlock()
 	retired := make(map[string]uint32)
-	for subject, panorama := range self.Tenants {
+	remains := make([]int, MaxReportPerView+1)
+	for subject, pano := range self.Tenants {
+		self.mu.RUnlock()
+		pano.Lock()
 		r1 := 0
-		for _, view := range panorama.Views {
-			obs := make([]*pb.Observation, 0, MaxReportPerView+1)
-			r2 := 0
-			for _, val := range view.Observations {
+		for _, view := range pano.Value.Views {
+			ri := 0
+			for i, val := range view.Observations {
 				if dt.CompareTimestamp(val.Ts, expire) > 0 {
-					obs = append(obs, val)
-				} else {
-					r2++
+					remains[ri] = i
+					ri++
 				}
 			}
-			if r2 > 0 {
+			if ri < len(view.Observations) {
+				obs := make([]*pb.Observation, ri, MaxReportPerView+1)
+				for i := 0; i < ri; i++ {
+					obs[ri] = view.Observations[remains[i]]
+				}
+				r1 += len(view.Observations) - ri
 				view.Observations = obs
-				r1 += r2
 			}
 		}
 		if r1 > 0 {
 			retired[subject] = uint32(r1)
 		}
+		pano.Unlock()
+		self.mu.RLock()
 	}
 	return retired
 }
 
 func (self *RawHealthStorage) DumpPanorama() map[string]*pb.Panorama {
-	return self.Tenants
+	snapshot := make(map[string]*pb.Panorama)
+	self.mu.RLock()
+	defer self.mu.RUnlock()
+	for subject, pano := range self.Tenants {
+		snapshot[subject] = pano.Value
+	}
+	return snapshot
 }
 
 func (self *RawHealthStorage) Dump() {
-	for subject, panorama := range self.Tenants {
+	self.mu.RLock()
+	for subject, pano := range self.Tenants {
 		fmt.Printf("=============%s=============\n", subject)
-		dt.DumpPanorama(os.Stdout, panorama)
+		dt.DumpPanorama(os.Stdout, pano.Value)
 	}
+	defer self.mu.RUnlock()
 }

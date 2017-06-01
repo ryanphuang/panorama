@@ -1,7 +1,6 @@
 package types
 
 import (
-	"sync"
 	"time"
 
 	pb "deephealth/build/gen"
@@ -31,14 +30,18 @@ type HealthStorage interface {
 	// Get the latest report for a subject
 	GetLatestReport(subject string) *pb.Report
 
-	// Get the whole panorama for a subject
-	GetPanorama(subject string) (*pb.Panorama, *sync.RWMutex)
-
 	// Get the view from an observer about a subject
-	GetView(observer string, subject string) (*pb.View, *sync.RWMutex)
+	GetView(observer string, subject string) *pb.View
+
+	// Get the whole panorama for a subject
+	GetPanorama(subject string) *ConcurrentPanorama
 
 	// Get all the panoramas for all observed subjects
 	DumpPanorama() map[string]*pb.Panorama
+
+	// Garbage collect stale observations from panoramas
+	// Return number of reaped observations for a subject
+	GC(ttl time.Duration) map[string]uint32
 }
 
 type HealthInference interface {

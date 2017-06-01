@@ -42,8 +42,8 @@ func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *He
 }
 
 func (self *HealthInferenceStorage) Infer(report *pb.Report) (*pb.Inference, error) {
-	panorama, l := self.raw.GetPanorama(report.Subject)
-	if panorama == nil || l == nil {
+	pano := self.raw.GetPanorama(report.Subject)
+	if pano == nil {
 		return nil, fmt.Errorf("cannot get panorama for %s\n", report.Subject)
 	}
 	workbook, ok := self.Workbooks[report.Subject]
@@ -51,9 +51,9 @@ func (self *HealthInferenceStorage) Infer(report *pb.Report) (*pb.Inference, err
 		workbook = make(InferMap)
 		self.Workbooks[report.Subject] = workbook
 	}
-	l.RLock()
-	inference := self.algo.InferPano(panorama, workbook)
-	l.RUnlock()
+	pano.RLock()
+	inference := self.algo.InferPano(pano.Value, workbook)
+	pano.RUnlock()
 	if inference == nil {
 		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}

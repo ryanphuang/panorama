@@ -5,12 +5,18 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 	"time"
 
 	pb "deephealth/build/gen"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
+
+type ConcurrentPanorama struct {
+	sync.RWMutex
+	Value *pb.Panorama
+}
 
 func SetMetric(observation *pb.Observation, name string, status pb.Status, score float32) bool {
 	metric, ok := observation.Metrics[name]

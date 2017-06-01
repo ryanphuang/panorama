@@ -164,15 +164,15 @@ func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReport
 }
 
 func (self *HealthGServer) GetPanorama(ctx context.Context, in *pb.GetPanoramaRequest) (*pb.Panorama, error) {
-	panorama, _ := self.storage.GetPanorama(in.Subject)
-	if panorama == nil {
+	pano := self.storage.GetPanorama(in.Subject)
+	if pano == nil {
 		return nil, fmt.Errorf("No panorama for %s", in.Subject)
 	}
-	return panorama, nil
+	return pano.Value, nil
 }
 
 func (self *HealthGServer) GetView(ctx context.Context, in *pb.GetViewRequest) (*pb.View, error) {
-	view, _ := self.storage.GetView(in.Subject, in.Observer)
+	view := self.storage.GetView(in.Subject, in.Observer)
 	if view == nil {
 		return nil, fmt.Errorf("No view for %s", in.Subject)
 	}
@@ -236,11 +236,13 @@ func (self *HealthGServer) GC() {
 	for self.s != nil {
 		time.Sleep(GC_FREQUENCY)
 		retired := self.storage.GC(1 * time.Minute) // retired reports older then 1 minute
-		if retired != nil {
+		if retired != nil && len(retired) != 0 {
 			for subject, r := range retired {
 				du.LogD(stag, "Retired %d observations for %s", r, subject)
 				// TODO: update inference result here
 			}
+		} else {
+			du.LogD(stag, "No observations retired at this GC round")
 		}
 	}
 }
