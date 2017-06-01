@@ -117,7 +117,7 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 		view = &pb.View{
 			Observer:     report.Observer,
 			Subject:      report.Subject,
-			Observations: make([]*pb.Observation, 0, MaxReportPerView),
+			Observations: make([]*pb.Observation, 0, MaxReportPerView+1),
 		}
 		panorama.Views[report.Observer] = view
 		du.LogD(stag, "create view for %s->%s...", report.Observer, report.Subject)
