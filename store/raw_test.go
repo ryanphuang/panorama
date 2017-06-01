@@ -176,8 +176,9 @@ func TestTruncate(t *testing.T) {
 		}
 		for i, ob := range view.Observations {
 			metric, _ := ob.Metrics["cpu"]
-			if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != float32(15+i) {
-				t.Errorf("Expecting metric score of %f, got %f", 15+i, metric.Value.Score)
+			expected := 20 - MaxReportPerView + i
+			if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != float32(expected) {
+				t.Errorf("Expecting metric score of %d, got %f", expected, metric.Value.Score)
 			}
 		}
 	}
