@@ -20,9 +20,12 @@ import (
 )
 
 const (
-	stag         = "service"
-	HANDLE_START = 10000
-	GC_FREQUENCY = 1 * time.Minute // frequency to invoke garbage collection
+	stag          = "service"
+	HANDLE_START  = 10000
+	GC_FREQUENCY  = 3 * time.Minute // frequency to invoke garbage collection
+	GC_THRESHOLD  = 5 * time.Minute // TTL threshold
+	HOLD_TIME     = 3 * time.Minute // time to hold ignored reports
+	HOLD_LIST_LEN = 20              // number of items to hold at most for each subject
 )
 
 type HealthGServer struct {
@@ -33,7 +36,6 @@ type HealthGServer struct {
 	hold_buffer *store.CacheList
 
 	handles map[uint64]*dt.ObserverModule
-	rch     chan *pb.Report
 	l       net.Listener
 	s       *grpc.Server
 }
@@ -46,12 +48,11 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs.handles = make(map[uint64]*dt.ObserverModule)
 	// hold ignored entries for 3 minutes
 	// TODO: make this configurable
-	gs.hold_buffer = store.NewCacheList(3*time.Minute, 20)
+	gs.hold_buffer = store.NewCacheList(HOLD_TIME, HOLD_LIST_LEN)
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs
 	gs.exchange = exchange.NewExchangeProtocol(config)
-	gs.rch = infs.ReportCh
 	return gs
 }
 
@@ -235,11 +236,12 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 func (self *HealthGServer) GC() {
 	for self.s != nil {
 		time.Sleep(GC_FREQUENCY)
-		retired := self.storage.GC(1 * time.Minute) // retired reports older then 1 minute
+		retired := self.storage.GC(GC_THRESHOLD) // retired reports older then 1 minute
 		if retired != nil && len(retired) != 0 {
 			for subject, r := range retired {
 				du.LogD(stag, "Retired %d observations for %s", r, subject)
 				// TODO: update inference result here
+				self.inference.InferSubjectAsync(subject)
 			}
 		} else {
 			du.LogD(stag, "No observations retired at this GC round")
@@ -264,14 +266,6 @@ func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
 			self.hold_buffer.Empty(report.Subject) // clear the report from hold buffer
 		}
 	}
-	self.rch <- report
 	du.LogD(stag, "sent report for %s for inference", report.Subject)
-	/*
-		select {
-		case self.rch <- report:
-			du.LogD(stag, "send report for %s for inference", report.Subject)
-		default:
-			du.LogD(stag, "fail to send report for %s for inference", report.Subject)
-		}
-	*/
+	self.inference.InferReportAsync(report)
 }

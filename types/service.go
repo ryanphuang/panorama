@@ -45,8 +45,19 @@ type HealthStorage interface {
 }
 
 type HealthInference interface {
-	// Infer the health of a subject given a new report
-	Infer(report *pb.Report) (*pb.Inference, error)
+	// Asynchronously infer the health of a subject
+	InferSubjectAsync(subject string) error
+
+	// Infer the health of a subject
+	InferSubject(subject string) (*pb.Inference, error)
+
+	// Asynchronously infer the health of a subject that has a new report
+	// May support incremental inference
+	InferReportAsync(report *pb.Report) error
+
+	// Infer the health of a subject that has a new report
+	// May support incremental inference
+	InferReport(report *pb.Report) (*pb.Inference, error)
 
 	// Get the health inference of a subject
 	GetInference(subject string) *pb.Inference
