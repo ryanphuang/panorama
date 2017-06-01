@@ -42,6 +42,7 @@ func logError(e error) {
 var observer string
 
 var client pb.HealthServiceClient
+var handle uint64
 
 var empty pb.Empty
 
@@ -83,6 +84,18 @@ func parseReport(args []string) *pb.Report {
 	}
 }
 
+func register() error {
+	if len(observer) == 0 {
+		observer = "XFE_0"
+	}
+	reply, err := client.Register(context.Background(), &pb.RegisterRequest{Module: "default", Observer: observer})
+	if err != nil {
+		return err
+	}
+	handle = reply.Handle
+	return nil
+}
+
 func runCmd(args []string) bool {
 	cmd := args[0]
 	switch cmd {
@@ -107,7 +120,7 @@ func runCmd(args []string) bool {
 		}
 	case "report":
 		r := parseReport(args)
-		reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: r})
+		reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: r})
 		switch reply.Result {
 		case pb.SubmitReportReply_ACCEPTED:
 			fmt.Println("Accepted")
@@ -249,6 +262,11 @@ func runCmd(args []string) bool {
 			fmt.Println(observer)
 		} else {
 			observer = args[1]
+			err := register()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "Fail to register new observer with the health service: %v\n", err)
+				return false
+			}
 		}
 	case "help":
 		fmt.Println(cmdHelp)
@@ -314,6 +332,10 @@ func main() {
 	}
 	defer conn.Close()
 	client = pb.NewHealthServiceClient(conn)
+	err = register()
+	if err != nil {
+		panic(fmt.Sprintf("Fail to register with the health service: %v", err))
+	}
 	if len(args) == 0 {
 		runPrompt()
 		fmt.Println()

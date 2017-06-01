@@ -22,6 +22,7 @@ const (
 )
 
 var client pb.HealthServiceClient
+var handle uint64
 
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 var (
@@ -36,7 +37,7 @@ func TestSubmitReport(t *testing.T) {
 		"network": &pb.Value{pb.Status_HEALTHY, 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
-	_, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+	_, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: report})
 	if err != nil {
 		t.Errorf("Fail to submit report: %v", err)
 	}
@@ -88,6 +89,10 @@ func TestMain(m *testing.M) {
 	}
 	defer conn.Close()
 	client = pb.NewHealthServiceClient(conn)
-
+	reply, err := client.Register(context.Background(), &pb.RegisterRequest{Module: "DeepHealth", Observer: "self"})
+	if err != nil {
+		panic(fmt.Sprintf("Fail to register with the health service: %v", err))
+	}
+	handle = reply.Handle
 	os.Exit(m.Run())
 }
