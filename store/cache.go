@@ -132,28 +132,33 @@ func (c *Cache) reap() {
 	c.Unlock()
 }
 
-func (c *CacheList) Process(key string, fn func(*CacheItem) bool) {
+func (c *CacheList) Process(key string, fn func(*CacheItem) bool) int {
 	c.Lock()
 	defer c.Unlock()
 	litem, ok := c.items[key]
 	if !ok {
-		return
+		return 0
 	}
-	var i, j int
+	var i, j, processed int
 	var item *CacheItem
 	newchain := make([]*CacheItem, 0, c.max_list_len+1)
 	j = 0
+	processed = 0
 	for i = 0; i < len(litem.chain); i++ {
 		item = litem.chain[i]
-		if item.Expired() || fn(item) {
+		if !item.Expired() {
 			continue
 		}
-		newchain[j] = item
-		j++
+		processed++
+		if !fn(item) {
+			// only retain them if the processing function says so
+			newchain[j] = item
+			j++
+		}
 	}
 	du.LogD(ctag, "%d entries remaining after expiring and processing the list", j)
 	litem.chain = newchain
-	return
+	return processed
 }
 
 func (c *CacheList) Get(key string) []*CacheItem {
@@ -196,6 +201,21 @@ func (c *CacheList) Set(key string, value interface{}) {
 	if len(litem.chain) > c.max_list_len {
 		litem.chain = litem.chain[1:]
 		du.LogD(ctag, "truncating cache list for %s to make room for %v", key, value)
+	}
+	c.Unlock()
+}
+
+func (c *CacheList) Delete(key string) {
+	c.Lock()
+	delete(c.items, key)
+	c.Unlock()
+}
+
+func (c *CacheList) Empty(key string) {
+	c.Lock()
+	litem, ok := c.items[key]
+	if ok {
+		litem.chain = make([]*CacheItem, 0, c.max_list_len+1)
 	}
 	c.Unlock()
 }

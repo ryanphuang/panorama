@@ -30,7 +30,7 @@ type HealthGServer struct {
 	storage     dt.HealthStorage
 	inference   dt.HealthInference
 	exchange    dt.HealthExchange
-	hold_buffer *store.Cache
+	hold_buffer *store.CacheList
 
 	handles map[uint64]*dt.ObserverModule
 	rch     chan *pb.Report
@@ -46,7 +46,7 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs.handles = make(map[uint64]*dt.ObserverModule)
 	// hold ignored entries for 3 minutes
 	// TODO: make this configurable
-	gs.hold_buffer = store.NewCache(3 * time.Minute)
+	gs.hold_buffer = store.NewCacheList(3*time.Minute, 20)
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs
@@ -233,16 +233,19 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 
 func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
 	if check_hold {
-		item, ok := self.hold_buffer.Get(report.Subject).(*pb.Report)
-		if ok {
-			du.LogD(stag, "found recent report about %s in hold buffer", report.Subject)
-			_, err := self.storage.AddReport(item, false)
-			if err != nil {
-				du.LogE(stag, "fail to add hold buffer report")
-			} else {
-				du.LogD(stag, "hold buffer report successfully added back to storage")
-				self.hold_buffer.Delete(report.Subject) // clear the report from hold buffer
+		items := self.hold_buffer.Get(report.Subject)
+		if items != nil && len(items) > 0 {
+			du.LogD(stag, "found %d recent reports about %s in hold buffer", len(items), report.Subject)
+			for _, item := range items {
+				r := item.Value.(*pb.Report)
+				_, err := self.storage.AddReport(r, false)
+				if err != nil {
+					du.LogE(stag, "fail to add hold buffer report %s->%s", report.Observer, report.Subject)
+				} else {
+					du.LogD(stag, "hold buffer report %->%s successfully added back to storage, report.Observer, report.Subject")
+				}
 			}
+			self.hold_buffer.Empty(report.Subject) // clear the report from hold buffer
 		}
 	}
 	self.rch <- report
