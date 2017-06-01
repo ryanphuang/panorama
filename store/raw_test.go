@@ -75,7 +75,7 @@ func TestAddReport(t *testing.T) {
 	}
 	for subject, stereo := range store.Tenants {
 		t.Logf("=============%s=============", subject)
-		for observer, view := range stereo.Views {
+		for observer, view := range stereo.Value.Views {
 			t.Logf("%d observations for %s->%s", len(view.Observations), observer, subject)
 			for _, ob := range view.Observations {
 				t.Logf("|%s| %s\n", observer, dt.ObservationString(ob))
@@ -166,8 +166,8 @@ func TestTruncate(t *testing.T) {
 	if metric.Value.Status != pb.Status_UNHEALTHY || metric.Value.Score != 19 {
 		t.Errorf("Wrong metric in the latest report: %s\n", metric)
 	}
-	panorama, _ := store.GetPanorama("TS_1")
-	for observer, view := range panorama.Views {
+	pano := store.GetPanorama("TS_1")
+	for observer, view := range pano.Value.Views {
 		if observer != "FE_2" {
 			t.Errorf("Only expecting observations by FE_2, got %s", observer)
 		}

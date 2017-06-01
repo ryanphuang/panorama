@@ -42,7 +42,6 @@ func NewRawHealthStorage(subjects ...string) *RawHealthStorage {
 	now := time.Now()
 	for _, subject := range subjects {
 		store.Watchlist[subject] = now
-		store.Tenants[subject] = new(dt.ConcurrentPanorama)
 	}
 	return store
 }
