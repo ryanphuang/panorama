@@ -26,3 +26,31 @@ func TestCacheExpiration(t *testing.T) {
 		t.Error("world entry should be expired by now")
 	}
 }
+
+func TestCacheList(t *testing.T) {
+	cache := NewCacheList(2*time.Second, 5)
+	for i := 0; i < 3; i++ {
+		cache.Set("hello", i+1)
+	}
+	items := cache.Get("hello")
+	for i, item := range items {
+		if item.Value != i+1 {
+			t.Errorf("expecting %d, got %v\n", i+1, item.Value)
+		}
+	}
+	for i := 3; i < 10; i++ {
+		cache.Set("hello", i+1)
+	}
+	items = cache.Get("hello")
+	for i, item := range items {
+		if item.Value != i+6 {
+			t.Errorf("expecting %d, got %v\n", i+6, item.Value)
+		}
+	}
+	time.Sleep(3 * time.Second)
+	t.Log("Sleeping for 3 seconds to test list expiration")
+	items = cache.Get("hello")
+	if len(items) != 0 {
+		t.Errorf("the cache list for hello should be empty now\n")
+	}
+}
