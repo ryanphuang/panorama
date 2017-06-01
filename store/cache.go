@@ -132,6 +132,30 @@ func (c *Cache) reap() {
 	c.Unlock()
 }
 
+func (c *CacheList) Process(key string, fn func(*CacheItem) bool) {
+	c.Lock()
+	defer c.Unlock()
+	litem, ok := c.items[key]
+	if !ok {
+		return
+	}
+	var i, j int
+	var item *CacheItem
+	newchain := make([]*CacheItem, 0, c.max_list_len+1)
+	j = 0
+	for i = 0; i < len(litem.chain); i++ {
+		item = litem.chain[i]
+		if item.Expired() || fn(item) {
+			continue
+		}
+		newchain[j] = item
+		j++
+	}
+	du.LogD(ctag, "%d entries remaining after expiring and processing the list", j)
+	litem.chain = newchain
+	return
+}
+
 func (c *CacheList) Get(key string) []*CacheItem {
 	c.Lock()
 	defer c.Unlock()

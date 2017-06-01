@@ -44,9 +44,9 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	storage := store.NewRawHealthStorage(config.Subjects...)
 	gs.storage = storage
 	gs.handles = make(map[uint64]*dt.ObserverModule)
-	// hold ignored entries for 2 minutes
+	// hold ignored entries for 3 minutes
 	// TODO: make this configurable
-	gs.hold_buffer = store.NewCache(2 * time.Minute)
+	gs.hold_buffer = store.NewCache(3 * time.Minute)
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs

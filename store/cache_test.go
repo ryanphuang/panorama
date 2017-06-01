@@ -53,4 +53,11 @@ func TestCacheList(t *testing.T) {
 	if len(items) != 0 {
 		t.Errorf("the cache list for hello should be empty now\n")
 	}
+	for i := 3; i < 10; i++ {
+		cache.Set("hello", i+1)
+	}
+	cache.Process("hello", func(item *CacheItem) bool {
+		t.Logf("process entry %v\n", item.Value)
+		return true
+	})
 }
