@@ -9,13 +9,27 @@ import (
 
 type CacheItem struct {
 	expires time.Time
-	value   interface{}
+	Value   interface{}
+}
+
+type CacheBase struct {
+	sync.RWMutex
+	ttl time.Duration
 }
 
 type Cache struct {
-	sync.RWMutex
+	CacheBase
 	items map[string]*CacheItem
-	ttl   time.Duration
+}
+
+type CacheListItem struct {
+	chain []*CacheItem
+}
+
+type CacheList struct {
+	CacheBase
+	items        map[string]*CacheListItem
+	max_list_len int
 }
 
 const (
@@ -28,10 +42,18 @@ var (
 	retired = make([]string, RETIRE_LIST_LEN)
 )
 
+func NewCacheList(ttl time.Duration, max_list_len int) *CacheList {
+	return &CacheList{
+		CacheBase:    CacheBase{ttl: ttl},
+		items:        make(map[string]*CacheListItem),
+		max_list_len: max_list_len,
+	}
+}
+
 func NewCache(ttl time.Duration) *Cache {
 	c := &Cache{
-		ttl:   ttl,
-		items: make(map[string]*CacheItem),
+		CacheBase: CacheBase{ttl: ttl},
+		items:     make(map[string]*CacheItem),
 	}
 	return c
 }
@@ -39,6 +61,10 @@ func NewCache(ttl time.Duration) *Cache {
 func (i *CacheItem) Expired() bool {
 	d := time.Now().Sub(i.expires)
 	return d >= 0
+}
+
+func (i *CacheItem) TTL() time.Duration {
+	return time.Now().Sub(i.expires)
 }
 
 func (c *Cache) Get(key string) interface{} {
@@ -55,13 +81,13 @@ func (c *Cache) Get(key string) interface{} {
 		du.LogD(ctag, "Entry for %s has expired (added at %s)", key, item.expires.Add(-1*c.ttl))
 		return nil
 	}
-	return item.value
+	return item.Value
 }
 
 func (c *Cache) Set(key string, value interface{}) {
 	item := &CacheItem{
 		expires: time.Now().Add(c.ttl),
-		value:   value,
+		Value:   value,
 	}
 	c.Lock()
 	c.items[key] = item
@@ -102,6 +128,50 @@ func (c *Cache) reap() {
 	c.Lock()
 	for j := 0; j < i; j++ {
 		delete(c.items, retired[j])
+	}
+	c.Unlock()
+}
+
+func (c *CacheList) Get(key string) []*CacheItem {
+	c.Lock()
+	defer c.Unlock()
+	litem, ok := c.items[key]
+	if !ok {
+		return nil
+	}
+	var i int
+	var item *CacheItem
+	// the items in the chain are in chronological order
+	// so once we find an unexpired item, we are done
+	for i = 0; i < len(litem.chain); i++ {
+		item = litem.chain[i]
+		if !item.Expired() {
+			break
+		}
+	}
+	if i > 0 {
+		du.LogD(ctag, "%d/%d entires for %s has been expired", i, len(litem.chain), key)
+		litem.chain = litem.chain[i:] // discard the expired items
+	}
+	return litem.chain
+}
+
+func (c *CacheList) Set(key string, value interface{}) {
+	item := &CacheItem{
+		expires: time.Now().Add(c.ttl),
+		Value:   value,
+	}
+	c.Lock()
+	litem, ok := c.items[key]
+	if !ok {
+		lst := make([]*CacheItem, 0, c.max_list_len+1)
+		litem = &CacheListItem{lst}
+		c.items[key] = litem
+	}
+	litem.chain = append(litem.chain, item)
+	if len(litem.chain) > c.max_list_len {
+		litem.chain = litem.chain[1:]
+		du.LogD(ctag, "truncating cache list for %s to make room for %v", key, value)
 	}
 	c.Unlock()
 }
