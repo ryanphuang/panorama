@@ -32,10 +32,10 @@ type HealthStorage interface {
 	GetLatestReport(subject string) *pb.Report
 
 	// Get the whole panorama for a subject
-	GetPanorama(subject string) (*pb.Panorama, *sync.Mutex)
+	GetPanorama(subject string) (*pb.Panorama, *sync.RWMutex)
 
 	// Get the view from an observer about a subject
-	GetView(observer string, subject string) (*pb.View, *sync.Mutex)
+	GetView(observer string, subject string) (*pb.View, *sync.RWMutex)
 
 	// Get all the panoramas for all observed subjects
 	DumpPanorama() map[string]*pb.Panorama

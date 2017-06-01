@@ -24,7 +24,7 @@ type HealthInferenceStorage struct {
 
 	raw   *RawHealthStorage
 	algo  dd.InferenceAlgo
-	mu    *sync.Mutex
+	mu    *sync.RWMutex
 	alive bool
 }
 
@@ -32,10 +32,10 @@ func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *He
 	storage := &HealthInferenceStorage{
 		Results:   make(InferMap),
 		Workbooks: make(map[string]InferMap),
-		ReportCh:  make(chan *pb.Report, 10),
+		ReportCh:  make(chan *pb.Report, 50),
 		raw:       raw,
 		algo:      algo,
-		mu:        &sync.Mutex{},
+		mu:        &sync.RWMutex{},
 		alive:     true,
 	}
 	return storage
@@ -46,14 +46,14 @@ func (self *HealthInferenceStorage) Infer(report *pb.Report) (*pb.Inference, err
 	if panorama == nil || l == nil {
 		return nil, fmt.Errorf("cannot get panorama for %s\n", report.Subject)
 	}
-	l.Lock()
 	workbook, ok := self.Workbooks[report.Subject]
 	if !ok {
 		workbook = make(InferMap)
 		self.Workbooks[report.Subject] = workbook
 	}
+	l.RLock()
 	inference := self.algo.InferPano(panorama, workbook)
-	l.Unlock()
+	l.RUnlock()
 	if inference == nil {
 		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}

@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	MaxReportPerView = 5 // maximum number of reports to store for a given view
+	MaxReportPerView = 10 // maximum number of reports to store for a given view
 	stag             = "store"
 )
 
@@ -26,25 +26,25 @@ const (
 
 type RawHealthStorage struct {
 	Tenants   map[string]*pb.Panorama
-	Locks     map[string]*sync.Mutex
+	Locks     map[string]*sync.RWMutex
 	Watchlist map[string]time.Time
 
-	mu *sync.Mutex
+	mu *sync.RWMutex
 }
 
 func NewRawHealthStorage(subjects ...string) *RawHealthStorage {
 	store := &RawHealthStorage{
 		Tenants:   make(map[string]*pb.Panorama),
-		Locks:     make(map[string]*sync.Mutex),
+		Locks:     make(map[string]*sync.RWMutex),
 		Watchlist: make(map[string]time.Time),
 
-		mu: &sync.Mutex{},
+		mu: &sync.RWMutex{},
 	}
 	var panorama *pb.Panorama
 	now := time.Now()
 	for _, subject := range subjects {
 		store.Watchlist[subject] = now
-		store.Locks[subject] = new(sync.Mutex)
+		store.Locks[subject] = new(sync.RWMutex)
 		panorama = new(pb.Panorama)
 		panorama.Subject = subject
 		panorama.Views = make(map[string]*pb.View)
@@ -98,7 +98,7 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 	du.LogD(stag, "add report for %s from %s...", report.Subject, report.Observer)
 	l, ok := self.Locks[report.Subject]
 	if !ok {
-		l = new(sync.Mutex)
+		l = new(sync.RWMutex)
 		self.Locks[report.Subject] = l
 	}
 	panorama, ok := self.Tenants[report.Subject]
@@ -131,9 +131,9 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 	return REPORT_ACCEPTED, nil
 }
 
-func (self *RawHealthStorage) GetPanorama(subject string) (*pb.Panorama, *sync.Mutex) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
+func (self *RawHealthStorage) GetPanorama(subject string) (*pb.Panorama, *sync.RWMutex) {
+	self.mu.RLock()
+	defer self.mu.RUnlock()
 	_, ok := self.Watchlist[subject]
 	if ok {
 		l, ok := self.Locks[subject]
@@ -147,7 +147,7 @@ func (self *RawHealthStorage) GetPanorama(subject string) (*pb.Panorama, *sync.M
 	return nil, nil
 }
 
-func (self *RawHealthStorage) GetView(observer string, subject string) (*pb.View, *sync.Mutex) {
+func (self *RawHealthStorage) GetView(observer string, subject string) (*pb.View, *sync.RWMutex) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	_, ok := self.Watchlist[subject]
