@@ -10,6 +10,7 @@ import (
 	dt "deephealth/types"
 	du "deephealth/util"
 
+	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
@@ -148,8 +149,8 @@ func (self *RawHealthStorage) GetPanorama(subject string) (*pb.Panorama, *sync.R
 }
 
 func (self *RawHealthStorage) GetView(observer string, subject string) (*pb.View, *sync.RWMutex) {
-	self.mu.Lock()
-	defer self.mu.Unlock()
+	self.mu.RLock()
+	defer self.mu.RUnlock()
 	_, ok := self.Watchlist[subject]
 	if ok {
 		l, ok := self.Locks[subject]
@@ -167,14 +168,14 @@ func (self *RawHealthStorage) GetView(observer string, subject string) (*pb.View
 }
 
 func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
-	self.mu.Lock()
+	self.mu.RLock()
 	l, ok := self.Locks[subject]
 	if !ok {
 		return nil
 	}
-	self.mu.Unlock()
-	l.Lock()
-	defer l.Unlock()
+	self.mu.RUnlock()
+	l.RLock()
+	defer l.RUnlock()
 	panorama, ok := self.Tenants[subject]
 	if !ok {
 		return nil
@@ -201,6 +202,39 @@ func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 		Subject:     subject,
 		Observation: recent_ob,
 	}
+}
+
+func (self *RawHealthStorage) GC(ttl time.Duration) map[string]uint32 {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	expire, err := ptypes.TimestampProto(time.Now().Add(-ttl))
+	if err != nil {
+		du.LogE(stag, "Fail to convert expire timestamp: %s", err)
+		return nil
+	}
+	retired := make(map[string]uint32)
+	for subject, panorama := range self.Tenants {
+		r1 := 0
+		for _, view := range panorama.Views {
+			obs := make([]*pb.Observation, 0, MaxReportPerView+1)
+			r2 := 0
+			for _, val := range view.Observations {
+				if dt.CompareTimestamp(val.Ts, expire) > 0 {
+					obs = append(obs, val)
+				} else {
+					r2++
+				}
+			}
+			if r2 > 0 {
+				view.Observations = obs
+				r1 += r2
+			}
+		}
+		if r1 > 0 {
+			retired[subject] = uint32(r1)
+		}
+	}
+	return retired
 }
 
 func (self *RawHealthStorage) DumpPanorama() map[string]*pb.Panorama {

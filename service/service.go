@@ -20,9 +20,9 @@ import (
 )
 
 const (
-	stag          = "service"
-	HANDLE_START  = 10000
-	HOLD_LIST_LEN = 3 // hold at most 3 reports
+	stag         = "service"
+	HANDLE_START = 10000
+	GC_FREQUENCY = 1 * time.Minute // frequency to invoke garbage collection
 )
 
 type HealthGServer struct {
@@ -77,6 +77,7 @@ func (self *HealthGServer) Start(errch chan error) error {
 	}()
 	self.inference.Start()
 	self.exchange.PingAll()
+	go self.GC()
 	return nil
 }
 
@@ -229,6 +230,19 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 		return nil, err
 	}
 	return &pb.PingReply{Result: pb.PingReply_GOOD, Time: pnow}, nil
+}
+
+func (self *HealthGServer) GC() {
+	for self.s != nil {
+		time.Sleep(GC_FREQUENCY)
+		retired := self.storage.GC(1 * time.Minute) // retired reports older then 1 minute
+		if retired != nil {
+			for subject, r := range retired {
+				du.LogD(stag, "Retired %d observations for %s", r, subject)
+				// TODO: update inference result here
+			}
+		}
+	}
 }
 
 func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
