@@ -64,12 +64,14 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 		i++
 	}
 	for name, stat := range statmap {
-		du.LogD(mtag, "score sum for %s is %f", name, stat.ScoreSum)
+		du.LogD(mtag, "stat for metric %s: score_sum=%f,cnt=%d,status_hist=%v", name, stat.ScoreSum, stat.Cnt, stat.StatusHist)
 		var maxcnt uint32 = 0
 		maxstatus := pb.Status_HEALTHY
 		for status, cnt := range stat.StatusHist {
 			if cnt > maxcnt {
 				maxcnt = cnt
+				maxstatus = status
+			} else if cnt == maxcnt && status > maxstatus {
 				maxstatus = status
 			}
 		}

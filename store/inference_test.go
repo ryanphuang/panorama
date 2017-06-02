@@ -105,5 +105,12 @@ func TestInfer(t *testing.T) {
 	if metric.Value.Status != pb.Status_UNHEALTHY {
 		t.Fatalf("Should infer cpu UNHEALTHY")
 	}
+	metric, ok = inference.Observation.Metrics["mem"]
+	if !ok {
+		t.Fatalf("Missing metric in inference")
+	}
+	if metric.Value.Status != pb.Status_UNHEALTHY {
+		t.Fatalf("Should infer mem UNHEALTHY")
+	}
 	infs.Stop()
 }
