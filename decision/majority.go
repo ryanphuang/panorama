@@ -1,11 +1,11 @@
 package decision
 
 import (
+	"github.com/golang/protobuf/ptypes/timestamp"
+
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
 	du "deephealth/util"
-
-	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 type SimpleMajorityInference struct {

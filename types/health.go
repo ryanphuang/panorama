@@ -87,6 +87,10 @@ func NewReport(observer string, subject string, metrics map[string]*pb.Value) *p
 	}
 }
 
+func SubtractTimestamp(a *timestamp.Timestamp, b *timestamp.Timestamp) int64 {
+	return (a.Seconds-b.Seconds)*1000000000 + int64(a.Nanos-b.Nanos)
+}
+
 func CompareTimestamp(a *timestamp.Timestamp, b *timestamp.Timestamp) int32 {
 	if a.Seconds < b.Seconds {
 		return -1
@@ -97,6 +101,9 @@ func CompareTimestamp(a *timestamp.Timestamp, b *timestamp.Timestamp) int32 {
 }
 
 func ObservationString(ob *pb.Observation) string {
+	if ob.Ts == nil || len(ob.Metrics) == 0 {
+		return "{}"
+	}
 	var buf bytes.Buffer
 	buf.WriteString(ptypes.TimestampString(ob.Ts) + " { ")
 	for name, metric := range ob.Metrics {

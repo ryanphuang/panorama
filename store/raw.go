@@ -173,34 +173,58 @@ func (self *RawHealthStorage) GetLatestReport(subject string) *pb.Report {
 	}
 }
 
-func (self *RawHealthStorage) GC(ttl time.Duration) map[string]uint32 {
-	expire, err := ptypes.TimestampProto(time.Now().Add(-ttl))
-	if err != nil {
-		du.LogE(stag, "Fail to convert expire timestamp: %s", err)
-		return nil
+func (self *RawHealthStorage) GC(ttl time.Duration, relative bool) map[string]uint32 {
+	var expire *timestamp.Timestamp
+	var err error
+	if !relative {
+		expire, err = ptypes.TimestampProto(time.Now().Add(-ttl))
+		if err != nil {
+			du.LogE(stag, "Fail to convert expire timestamp: %s", err)
+			return nil
+		}
 	}
 	self.mu.RLock()
 	defer self.mu.RUnlock()
 	retired := make(map[string]uint32)
+
 	remains := make([]int, MaxReportPerView+1)
+	ttl_nanos := ttl.Nanoseconds()
 	for subject, pano := range self.Tenants {
 		self.mu.RUnlock()
 		pano.Lock()
 		r1 := 0
 		for _, view := range pano.Value.Views {
+			lo := len(view.Observations)
+			if lo == 0 {
+				continue
+			}
 			ri := 0
-			for i, val := range view.Observations {
-				if dt.CompareTimestamp(val.Ts, expire) > 0 {
-					remains[ri] = i
-					ri++
+			if relative {
+				max_ts := view.Observations[lo-1].Ts
+				for i := 0; i < lo-1; i++ {
+					val := view.Observations[i]
+					elapsed := dt.SubtractTimestamp(max_ts, val.Ts)
+					if elapsed < ttl_nanos {
+						remains[ri] = i
+						ri++
+					}
+				}
+				remains[ri] = lo - 1
+				ri++
+			} else {
+				for i, val := range view.Observations {
+					if dt.CompareTimestamp(val.Ts, expire) > 0 {
+						remains[ri] = i
+						ri++
+					}
 				}
 			}
-			if ri < len(view.Observations) {
+			if ri < lo {
 				obs := make([]*pb.Observation, ri, MaxReportPerView+1)
 				for i := 0; i < ri; i++ {
 					obs[i] = view.Observations[remains[i]]
 				}
-				r1 += len(view.Observations) - ri
+				r1 += lo - ri
 				view.Observations = obs
 			}
 		}

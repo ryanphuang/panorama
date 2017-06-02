@@ -183,3 +183,43 @@ func TestTruncate(t *testing.T) {
 		}
 	}
 }
+
+func addReports(store *RawHealthStorage, start int, end int, t *testing.T) {
+	for i := start; i < end; i++ {
+		t.Logf("Making observation %d", i)
+		metrics := map[string]*pb.Value{
+			"cpu":     &pb.Value{pb.Status_HEALTHY, 100},
+			"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+			"network": &pb.Value{pb.Status_UNHEALTHY, 10},
+			"memory":  &pb.Value{pb.Status_MAYBE_UNHEALTHY, 30},
+		}
+		observer := fmt.Sprintf("FE_1")
+		subject := fmt.Sprintf("TS_2")
+		report := dt.NewReport(observer, subject, metrics)
+		_, err := store.AddReport(report, false)
+		if err != nil {
+			t.Errorf("Fail to add report %s", report)
+		}
+	}
+}
+
+func TestGC(t *testing.T) {
+	store := NewRawHealthStorage()
+	addReports(store, 0, 5, t)
+	t.Logf("Sleep 5 seconds before submitting new reports")
+	time.Sleep(5 * time.Second)
+	addReports(store, 5, 8, t)
+	retired := store.GC(3*time.Second, true)
+	r, ok := retired["TS_2"]
+	if !ok || r != 5 {
+		t.Errorf("Should retire 5 observations for TS_2")
+	}
+	pano := store.GetPanorama("TS_2")
+	t.Logf("New panorama: %s", dt.PanoramaString(pano.Value))
+	time.Sleep(3 * time.Second)
+	retired = store.GC(2*time.Second, false)
+	r, ok = retired["TS_2"]
+	if !ok || r != 3 {
+		t.Errorf("Should retire 3 observations for TS_2")
+	}
+}

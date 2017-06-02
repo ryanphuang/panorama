@@ -78,7 +78,10 @@ func (self *HealthGServer) Start(errch chan error) error {
 	}()
 	self.inference.Start()
 	self.exchange.PingAll()
-	go self.GC()
+	if GC_FREQUENCY > 0 {
+		// set GC frequency to negative to disable GC
+		go self.GC()
+	}
 	return nil
 }
 
@@ -236,7 +239,7 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 func (self *HealthGServer) GC() {
 	for self.s != nil {
 		time.Sleep(GC_FREQUENCY)
-		retired := self.storage.GC(GC_THRESHOLD) // retired reports older then 1 minute
+		retired := self.storage.GC(GC_THRESHOLD, true) // retired reports older then GC_THREASHOLD
 		if retired != nil && len(retired) != 0 {
 			for subject, r := range retired {
 				du.LogD(stag, "Retired %d observations for %s", r, subject)

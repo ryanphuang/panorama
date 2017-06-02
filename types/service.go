@@ -41,7 +41,10 @@ type HealthStorage interface {
 
 	// Garbage collect stale observations from panoramas
 	// Return number of reaped observations for a subject
-	GC(ttl time.Duration) map[string]uint32
+	// When relative is true, the GC is based on elapsed
+	// time with the most recent observation rather than
+	// the absolute time now.
+	GC(ttl time.Duration, relative bool) map[string]uint32
 }
 
 type HealthInference interface {
