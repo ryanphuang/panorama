@@ -122,7 +122,7 @@ func DumpView(w io.Writer, view *pb.View) {
 func PanoramaString(pano *pb.Panorama) string {
 	var buf bytes.Buffer
 	for observer, view := range pano.Views {
-		buf.WriteString(fmt.Sprintf("[[... %s->%s (%d observations) ...]]\n", observer, pano.Subject, len(view.Observations)))
+		buf.WriteString(fmt.Sprintf("\n[[... %s->%s (%d observations) ...]]\n", observer, pano.Subject, len(view.Observations)))
 		buf.WriteString(ViewString(view))
 	}
 	return buf.String()

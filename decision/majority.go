@@ -1,11 +1,11 @@
 package decision
 
 import (
-	"time"
-
 	pb "deephealth/build/gen"
 	dt "deephealth/types"
 	du "deephealth/util"
+
+	"github.com/golang/protobuf/ptypes/timestamp"
 )
 
 type SimpleMajorityInference struct {
@@ -37,15 +37,26 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 		Observers: make([]string, len(panorama.Views)),
 	}
 	i := 0
-	observation := dt.NewObservation(time.Now())
+	metrics := make(map[string]*pb.Metric)
 	statmap := make(map[string]*valueStat)
+	du.LogD(mtag, "infer panorama for %s:%s", panorama.Subject, dt.PanoramaString(panorama))
+	var pts *timestamp.Timestamp = nil
 	for observer, view := range panorama.Views {
 		summary.Observers[i] = observer
 		inference, ok := workbook[observer]
 		if !ok {
 			inference = self.InferView(view)
+			if inference == nil {
+				du.LogD(mtag, "empty view from %s", observer)
+				continue
+			}
 			du.LogD(mtag, "summarized view from %s: %s", observer, dt.ObservationString(inference.Observation))
 			workbook[observer] = inference
+		} else {
+			du.LogD(mtag, "found summary view from %s in workbook: %s", observer, dt.ObservationString(inference.Observation))
+		}
+		if pts == nil || dt.CompareTimestamp(pts, inference.Observation.Ts) < 0 {
+			pts = inference.Observation.Ts
 		}
 		for name, metric := range inference.Observation.Metrics {
 			stat, ok := statmap[name]
@@ -75,20 +86,20 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 				maxstatus = status
 			}
 		}
-		observation.Metrics[name] = &pb.Metric{name, &pb.Value{maxstatus, stat.ScoreSum / float32(stat.Cnt)}}
+		metrics[name] = &pb.Metric{name, &pb.Value{maxstatus, stat.ScoreSum / float32(stat.Cnt)}}
 	}
-	summary.Observation = observation
+	summary.Observation = &pb.Observation{pts, metrics}
 	return summary
 }
 
 func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
+	i := len(view.Observations) - 1
+	if i < 0 {
+		return nil
+	}
 	summary := &pb.Inference{
 		Subject:   view.Subject,
 		Observers: []string{view.Observer},
-	}
-	i := len(view.Observations) - 1
-	if i < 0 {
-		return summary
 	}
 	metrics := make(map[string]*pb.Metric)
 	pts := view.Observations[i].Ts
