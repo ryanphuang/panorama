@@ -22,6 +22,8 @@ import edu.jhu.order.deephealth.Service.SubmitReportReply;
 import edu.jhu.order.deephealth.Service.SubmitReportRequest;
 import edu.jhu.order.deephealth.Service.PingRequest;
 import edu.jhu.order.deephealth.Service.PingReply;
+import edu.jhu.order.deephealth.Service.RegisterRequest;
+import edu.jhu.order.deephealth.Service.RegisterReply;
 import edu.jhu.order.deephealth.Service.Peer;
 
 import com.google.protobuf.util.Timestamps;
@@ -30,20 +32,23 @@ public class DHClient
 {
   private static final Logger logger = Logger.getLogger(HealthServiceStub.class.getName());
 
+  private String module;
   private String id;
   private String serverAddr;
   private int serverPort;
   private boolean async;
+  private long handle;
 
   private final ManagedChannel channel;
   private final HealthServiceBlockingStub blockingStub;
   private final HealthServiceStub asyncStub;
 
-  public DHClient(String addr, int port, String ID, boolean async)
+  public DHClient(String addr, int port, String module, String id, boolean async)
   {
     this.serverAddr = addr;
     this.serverPort = port;
-    this.id = ID;
+    this.module = module;
+    this.id = id;
     this.async = async;
 
     ManagedChannelBuilder<?> channelBuilder = ManagedChannelBuilder.forAddress(
@@ -132,7 +137,7 @@ public class DHClient
     Observation observation = DHBuilder.NewObservation(timeMillis, metrics);
     Report report = Report.newBuilder().setObserver(id).setSubject(subject)
       .setObservation(observation).build();
-    SubmitReportRequest request = SubmitReportRequest.newBuilder().setReport(report)
+    SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report)
       .build();
     SubmitReportReply reply; 
     try {
@@ -159,6 +164,21 @@ public class DHClient
     }
     logger.info("Result: " + report);
     return report;
+  }
+
+  public boolean Init()
+  {
+    RegisterRequest request = RegisterRequest.newBuilder().setModule(module).setObserver(id).build();
+    RegisterReply reply;
+    try {
+      reply = blockingStub.register(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("Register RPC failed: " + e.getStatus());
+      return false;
+    }
+    handle = reply.getHandle();
+    logger.info("Got register reply with handle " + handle);
+    return true;
   }
 
   // ping local health server
