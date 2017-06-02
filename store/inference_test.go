@@ -112,5 +112,17 @@ func TestInfer(t *testing.T) {
 	if metric.Value.Status != pb.Status_UNHEALTHY {
 		t.Fatalf("Should infer mem UNHEALTHY")
 	}
+
+	metrics := metrics_t{"sync": &pb.Value{pb.Status_HEALTHY, 80}}
+	r := dt.NewReport("FE_2", subject, metrics)
+	result, err := raw.AddReport(r, false)
+	if err != nil || result != REPORT_ACCEPTED {
+		t.Fatalf("Fail to add report %s", r)
+	}
+	_, err = infs.InferReport(r)
+	inference = infs.GetInference(subject)
+	if len(inference.Observation.Metrics) != 5 {
+		t.Fatalf("Should have 5 observers at this moment, got %d", len(inference.Observation.Metrics))
+	}
 	infs.Stop()
 }
