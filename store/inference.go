@@ -60,11 +60,12 @@ func (self *HealthInferenceStorage) InferSubject(subject string) (*pb.Inference,
 	if pano == nil {
 		return nil, fmt.Errorf("cannot get panorama for %s\n", subject)
 	}
-	workbook, ok := self.Workbooks[subject]
-	if !ok {
-		workbook = make(InferMap)
-		self.Workbooks[subject] = workbook
-	}
+	// since we need to re-calculate the inference for the entire subject
+	// we should clear the workbook
+	workbook := make(InferMap)
+	self.mu.Lock()
+	self.Workbooks[subject] = workbook
+	self.mu.Unlock()
 	pano.RLock()
 	inference := self.algo.InferPano(pano.Value, workbook)
 	pano.RUnlock()
@@ -79,9 +80,33 @@ func (self *HealthInferenceStorage) InferSubject(subject string) (*pb.Inference,
 }
 
 func (self *HealthInferenceStorage) InferReport(report *pb.Report) (*pb.Inference, error) {
-	// For now, we just re-do the inference
 	// TODO: support incremental inference
-	return self.InferSubject(report.Subject)
+	pano := self.raw.GetPanorama(report.Subject)
+	if pano == nil {
+		return nil, fmt.Errorf("cannot get panorama for %s\n", report.Subject)
+	}
+	self.mu.Lock()
+	workbook, ok := self.Workbooks[report.Subject]
+	if !ok {
+		workbook = make(InferMap)
+		self.Workbooks[report.Subject] = workbook
+	} else {
+		// clear the workbook entry for the particular observer
+		// so that we just need to re-infer the specific view
+		delete(workbook, report.Observer)
+	}
+	self.mu.Unlock()
+	pano.RLock()
+	inference := self.algo.InferPano(pano.Value, workbook)
+	pano.RUnlock()
+	if inference == nil {
+		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
+	}
+	du.LogD(itag, "inference result for %s: %s", report.Subject, dt.ObservationString(inference.Observation))
+	self.mu.Lock()
+	self.Results[report.Subject] = inference
+	self.mu.Unlock()
+	return inference, nil
 }
 
 func (self *HealthInferenceStorage) GetInference(subject string) *pb.Inference {
