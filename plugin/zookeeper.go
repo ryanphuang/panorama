@@ -134,26 +134,25 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 		return nil
 	}
 	cres := classifier(ret)
-	fmt.Println(tag_context, tag_subject, cres.Subject, cres.Status, cres.Score)
 	var subject string
 	var context string
 	if len(cres.Subject) != 0 {
 		subject, ok = self.AddrEIdMap[cres.Subject]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "Filter host not in ensemble in log: %s\n", line)
+			fmt.Fprintf(os.Stderr, "Filter host %s not in ensemble in log: %s\n", cres.Subject, line)
 			return nil
 		}
 	} else {
 		subject = tag_subject
 	}
+	if len(subject) == 0 {
+		fmt.Fprintf(os.Stderr, "Empty subject in log: %s\n", line)
+		return nil
+	}
 	if len(cres.Context) != 0 {
 		context = cres.Context
 	} else {
 		context = tag_context
-	}
-	if len(subject) == 0 {
-		fmt.Fprintf(os.Stderr, "Empty subject in log: %s\n", line)
-		return nil
 	}
 	timestamp, err := time.Parse("2006-01-02 15:04:05", result["time"][:19])
 	if err != nil {

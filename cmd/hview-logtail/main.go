@@ -17,14 +17,15 @@ import (
 
 var (
 	report       = flag.Bool("report", true, "Whether to report events to health service")
-	staleSeconds = flag.Int("stale", 5*60, "Cutoff in seconds to skip stale events. -1 means no check for staleness.")
-	mergeSeconds = flag.Int("merge", 5, "Do not repeated report event for a subject within the given time.")
+	staleSeconds = flag.Float64("stale", 5*60, "Cutoff in seconds to skip stale events. -1 means no check for staleness.")
+	mergeSeconds = flag.Float64("merge", 1, "Do not repeated report event for a subject within the given time.")
 	log          = flag.String("log", "", "Log file to watch for (Required)")
 	server       = flag.String("server", "", "Address of health server to report events to (Required)")
 )
 
 type report_key struct {
 	subject string
+	context string
 	status  pb.Status
 	score   int32
 }
@@ -41,7 +42,7 @@ func usage() {
 }
 
 func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
-	key := report_key{event.Subject, event.Status, int32(event.Score)}
+	key := report_key{event.Subject, event.Context, event.Status, int32(event.Score)}
 	if mergeCutoff > 0 {
 		ts, ok := lastReportTime[key]
 		if ok && event.Time.Sub(ts).Seconds() < mergeCutoff {
@@ -62,11 +63,11 @@ func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
 	lastReportTime[key] = event.Time
 	switch reply.Result {
 	case pb.SubmitReportReply_ACCEPTED:
-		fmt.Printf("Accepted report %s\n", event)
+		fmt.Printf("Accepted report %v\n", event)
 	case pb.SubmitReportReply_IGNORED:
-		fmt.Printf("Ignored report %s\n", event)
+		fmt.Printf("Ignored report %v\n", event)
 	case pb.SubmitReportReply_FAILED:
-		fmt.Printf("Failed report %s\n", event)
+		fmt.Printf("Failed report %v\n", event)
 	}
 	return nil
 }
@@ -134,8 +135,8 @@ func main() {
 	fmt.Println("Sleeping 3 seconds to stabilize")
 	time.Sleep(3 * time.Second)
 
-	staleCutoff = float64(*staleSeconds)
-	mergeCutoff = float64(*mergeSeconds)
+	staleCutoff = *staleSeconds
+	mergeCutoff = *mergeSeconds
 
 	fmt.Println("Start monitoring " + *log)
 

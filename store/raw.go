@@ -193,7 +193,7 @@ func (self *RawHealthStorage) GC(ttl time.Duration, relative bool) map[string]ui
 		self.mu.RUnlock()
 		pano.Lock()
 		r1 := 0
-		for _, view := range pano.Value.Views {
+		for observer, view := range pano.Value.Views {
 			lo := len(view.Observations)
 			if lo == 0 {
 				continue
@@ -201,9 +201,11 @@ func (self *RawHealthStorage) GC(ttl time.Duration, relative bool) map[string]ui
 			ri := 0
 			if relative {
 				max_ts := view.Observations[lo-1].Ts
+				du.LogD(stag, "most recent report %s=>%s is at: %s", observer, subject, ptypes.TimestampString(max_ts))
 				for i := 0; i < lo-1; i++ {
 					val := view.Observations[i]
 					elapsed := dt.SubtractTimestamp(max_ts, val.Ts)
+					du.LogD(stag, "[%d] at %s, elapsed %.1f seconds", i, ptypes.TimestampString(val.Ts), float64(elapsed)/1000000000.0)
 					if elapsed < ttl_nanos {
 						remains[ri] = i
 						ri++
