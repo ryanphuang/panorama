@@ -10,8 +10,8 @@
         }
       ],
       "Classifier": {
-        "Status": "unhealthy",
-        "Score": "20"
+        "Status": "maybe_unhealthy",
+        "Score": "50"
       }
     },
     {
@@ -24,8 +24,8 @@
         }
       ],
       "Classifier": {
-        "Status": "unhealthy",
-        "Score": "20"
+        "Status": "maybe_unhealthy",
+        "Score": "50"
       }
     },
     {
@@ -60,8 +60,8 @@
         },
         {
           "Field": "content",
-          "Operator": "(~",
-          "Pattern": "['^Slow serializing node .*$', '^Unexpected exception causing shutdown .*$', '.* GOODBYE .*$']",
+          "Operator": "~",
+          "Pattern": "^Slow serializing node .*$",
           "CaptureResult": false
         }
       ],
@@ -69,6 +69,27 @@
         "Context": "LearnerHandler",
         "Status": "unhealthy",
         "Score": "20"
+      }
+    },
+    {
+      "Chain": [
+        {
+          "Field": "tag_context",
+          "Operator": "==",
+          "Pattern": "LearnerHandler-",
+          "CaptureResult": false
+        },
+        {
+          "Field": "content",
+          "Operator": "(~",
+          "Pattern": "['^Unexpected exception causing shutdown .*$', '.* GOODBYE .*$']",
+          "CaptureResult": false
+        }
+      ],
+      "Classifier": {
+        "Context": "LearnerHandler",
+        "Status": "dead",
+        "Score": "0"
       }
     },
     {
