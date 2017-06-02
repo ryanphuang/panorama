@@ -56,6 +56,14 @@ func NewObservationSingleMetric(t time.Time, name string, status pb.Status, scor
 	return nil
 }
 
+func NewMetrics(names ...string) map[string]*pb.Metric {
+	metrics := make(map[string]*pb.Metric)
+	for _, name := range names {
+		metrics[name] = &pb.Metric{name, &pb.Value{pb.Status_INVALID, 0.0}}
+	}
+	return metrics
+}
+
 func NewObservation(t time.Time, names ...string) *pb.Observation {
 	metrics := make(map[string]*pb.Metric)
 	for _, name := range names {

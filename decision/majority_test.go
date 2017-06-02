@@ -5,4 +5,5 @@ import (
 )
 
 func TestInferPano(t *testing.T) {
+	var majority SimpleMajorityInference
 }
