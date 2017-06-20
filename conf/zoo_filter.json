@@ -46,8 +46,8 @@
       "Classifier": {
         "Context": "WorkerSender",
         "Subject": "<content_host>",
-        "Status": "unhealthy",
-        "Score": "20"
+        "Status": "maybe_unhealthy",
+        "Score": "40"
       }
     },
     {
@@ -150,6 +150,7 @@
         }
       ],
       "Classifier": {
+        "Context": "Snapshot",
         "Status": "unhealthy",
         "Score": "20"
       }
@@ -174,6 +175,28 @@
         "Subject": "<content_host>",
         "Status": "healthy",
         "Score": "90"
+      }
+    },
+    {
+      "Chain": [
+        {
+          "Field": "tag_context",
+          "Operator": "~",
+          "Pattern": "QuorumPeer\\[myid=\\d+\\].*",
+          "CaptureResult": false
+        },
+        {
+          "Field": "content",
+          "Operator": "~",
+          "Pattern": "Exception when following the leader .*/(?P<host>[^:]+):(?P<port>\\d+)",
+          "CaptureResult": true
+        }
+      ],
+      "Classifier": {
+        "Context": "Following",
+        "Subject": "<content_host>",
+        "Status": "unhealthy",
+        "Score": "30"
       }
     }
   ]

@@ -185,7 +185,6 @@ func NewFieldFilter(config *FieldFilterClauseConfig) (FieldFilter, error) {
 		if err != nil {
 			return nil, err
 		}
-		fmt.Println(patterns)
 		if config.CaptureResult {
 			filter = NewFieldMRegexpMapAnyFilter(config.Field, config.Field+"_", patterns...)
 		} else {

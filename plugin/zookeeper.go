@@ -139,8 +139,8 @@ func (self *ZooKeeperEventParser) ParseLine(line string) *dt.Event {
 	if len(cres.Subject) != 0 {
 		subject, ok = self.AddrEIdMap[cres.Subject]
 		if !ok {
-			fmt.Fprintf(os.Stderr, "Filter host %s not in ensemble in log: %s\n", cres.Subject, line)
-			return nil
+			// assume it's an EID
+			subject = cres.Subject
 		}
 	} else {
 		subject = tag_subject
