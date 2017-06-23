@@ -56,6 +56,22 @@ func BenchmarkSubmitReport(b *testing.B) {
 	}
 }
 
+func BenchmarkGetInference(b *testing.B) {
+	metrics := map[string]*pb.Value{
+		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+		"network": &pb.Value{pb.Status_HEALTHY, 95},
+	}
+	report := dt.NewReport("XFE_2", "TS_3", metrics)
+	for i := 0; i < b.N; i++ {
+		client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		client.GetInference(context.Background(), &pb.GetInferenceRequest{Subject: "TS_3"})
+	}
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 
