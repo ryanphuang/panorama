@@ -70,7 +70,7 @@
 					</descriptorRefs>
 					<archive>
 						<manifest>
-							<mainClass>edu.jhu.order.deephealth.App</mainClass>
+							<mainClass>edu.jhu.order.deephealth.Bundle</mainClass>
 						</manifest>
 					</archive>
 				</configuration>

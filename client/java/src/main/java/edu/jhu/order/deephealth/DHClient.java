@@ -36,26 +36,51 @@ public class DHClient
   private String id;
   private String serverAddr;
   private int serverPort;
-  private boolean async;
   private long handle;
 
-  private final ManagedChannel channel;
-  private final HealthServiceBlockingStub blockingStub;
-  private final HealthServiceStub asyncStub;
+  private ManagedChannel channel;
+  private HealthServiceBlockingStub blockingStub;
+  private HealthServiceStub asyncStub;
+  private boolean ready = false;
 
-  public DHClient(String addr, int port, String module, String id, boolean async)
+  private static DHClient instance = null;
+
+  public static DHClient getInstance() {
+    if (instance == null) {
+      instance = new DHClient();
+    }
+    return instance;
+  }
+
+  private DHClient()
+  {
+  }
+
+  public boolean init(String addr, int port, String module, String id)
   {
     this.serverAddr = addr;
     this.serverPort = port;
     this.module = module;
     this.id = id;
-    this.async = async;
 
     ManagedChannelBuilder<?> channelBuilder = ManagedChannelBuilder.forAddress(
         serverAddr, serverPort).usePlaintext(true);
     this.channel = channelBuilder.build();
     this.blockingStub = HealthServiceGrpc.newBlockingStub(channel);
     this.asyncStub = HealthServiceGrpc.newStub(channel);
+
+    RegisterRequest request = RegisterRequest.newBuilder().setModule(module).setObserver(id).build();
+    RegisterReply reply;
+    try {
+      reply = blockingStub.register(request);
+    } catch (StatusRuntimeException e) {
+      logger.warning("Register RPC failed: " + e.getStatus());
+      return false;
+    }
+    handle = reply.getHandle();
+    logger.info("Got register reply with handle " + handle);
+    this.ready = true;
+    return true;
   }
 
   public String getServerAddr()
@@ -80,7 +105,10 @@ public class DHClient
 
   public void shutdown() throws InterruptedException 
   {
+    if (!ready)
+      return;
     channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+    ready = false;
   }
 
   public HealthServiceBlockingStub block()
@@ -93,8 +121,10 @@ public class DHClient
     return asyncStub;
   }
 
-  public boolean Observe(String subject)
+  public boolean observe(String subject)
   {
+    if (!ready)
+      return false;
     logger.info("Start observing " + subject);
     ObserveRequest request = ObserveRequest.newBuilder().setSubject(subject).build();
     ObserveReply reply;
@@ -109,8 +139,10 @@ public class DHClient
     return ok;
   }
 
-  public boolean StopObserving(String subject)
+  public boolean stopObserving(String subject)
   {
+    if (!ready)
+      return false;
     logger.info("Stop observing " + subject);
     ObserveRequest request = ObserveRequest.newBuilder().setSubject(subject).build();
     ObserveReply reply; 
@@ -125,13 +157,15 @@ public class DHClient
     return ok;
   }
 
-  public SubmitReportReply.Status selfReport(String subject, Metric... metrics)
+  public SubmitReportReply.Status selfReport(Metric... metrics)
   {
-    return SubmitReport(this.id, metrics);
+    return report(this.id, metrics);
   }
 
-  public SubmitReportReply.Status SubmitReport(String subject, Metric... metrics)
+  public SubmitReportReply.Status report(String subject, Metric... metrics)
   {
+    if (!ready)
+      return null;
     long timeMillis = System.currentTimeMillis();
     logger.info("Submitting report from " + id + " about " + subject + " at " + timeMillis);
     Observation observation = DHBuilder.NewObservation(timeMillis, metrics);
@@ -151,8 +185,10 @@ public class DHClient
     return status;
   }
 
-  public Report GetLatestReport(String subject)
+  public Report getReport(String subject)
   {
+    if (!ready)
+      return null;
     logger.info("Getting report for " + subject);
     GetReportRequest request = GetReportRequest.newBuilder().setSubject(subject).build();
     Report report;
@@ -166,24 +202,11 @@ public class DHClient
     return report;
   }
 
-  public boolean Init()
-  {
-    RegisterRequest request = RegisterRequest.newBuilder().setModule(module).setObserver(id).build();
-    RegisterReply reply;
-    try {
-      reply = blockingStub.register(request);
-    } catch (StatusRuntimeException e) {
-      logger.warning("Register RPC failed: " + e.getStatus());
-      return false;
-    }
-    handle = reply.getHandle();
-    logger.info("Got register reply with handle " + handle);
-    return true;
-  }
-
   // ping local health server
-  public long Ping()
+  public long ping()
   {
+    if (!ready)
+      return -1;
     long timeMillis = System.currentTimeMillis();
     Peer source = Peer.newBuilder().setId(id).setAddr("localhost").build();
     PingRequest request = PingRequest.newBuilder().setSource(source).setTime(Timestamps.fromMillis(timeMillis)).build();
