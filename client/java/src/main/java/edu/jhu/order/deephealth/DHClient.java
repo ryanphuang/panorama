@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 
 import edu.jhu.order.deephealth.Health.Observation;
 import edu.jhu.order.deephealth.Health.Report;
+import edu.jhu.order.deephealth.DHBuffer.AggregateValue;
 import edu.jhu.order.deephealth.Health.Metric;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceBlockingStub;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceStub;
@@ -45,6 +46,8 @@ public class DHClient
   private HealthServiceStub asyncStub;
   private boolean ready = false;
 
+  private DHRateLimiter rateLimiter;
+
   private static DHClient instance = null;
 
   public static DHClient getInstance() {
@@ -56,6 +59,7 @@ public class DHClient
 
   private DHClient()
   {
+    rateLimiter = new DHRateLimiter(this);
   }
 
   public boolean init(String addr, int port, String module, String id)
@@ -74,7 +78,7 @@ public class DHClient
     this.blockingStub = HealthServiceGrpc.newBlockingStub(channel);
     this.asyncStub = HealthServiceGrpc.newStub(channel);
 
-    RegisterRequest request = RegisterRequest.newBuilder().setModule(module).setObserver(id).build();
+    RegisterRequest request = RegisterRequest.newBuilder().setModule(this.module).setObserver(id).build();
     RegisterReply reply;
     try {
       reply = blockingStub.register(request);
@@ -178,6 +182,11 @@ public class DHClient
       public void onCompleted() {
       }
   };
+
+  public void inform(String subject, String name, Health.Status status, float score, boolean async)
+  {
+    rateLimiter.vet(subject, name, status, score, async);
+  }
 
   public void reportAsync(final AsyncCallBack cb, String subject, Metric... metrics) 
   {
