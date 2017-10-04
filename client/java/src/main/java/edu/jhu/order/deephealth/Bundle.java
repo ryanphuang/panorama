@@ -2,6 +2,9 @@ package edu.jhu.order.deephealth;
 
 import edu.jhu.order.deephealth.Health.Report;
 
+import com.google.protobuf.Message;
+import java.util.concurrent.CountDownLatch;
+
 public class Bundle
 {
     public static void main( String[] args )
@@ -20,6 +23,24 @@ public class Bundle
       System.out.println("Report for TS_2: " + report);
       report = client.getReport("TS_3");
       System.out.println("Report for TS_3: " + report);
+
+      final CountDownLatch finishLatch = new CountDownLatch(1);
+      client.reportAsync(new DHClient.AsyncCallBack() {
+        public void onMessage(Message message) {
+          System.out.println("Received reply message: " + message);
+        }
+        public void onRpcError(Throwable exception) {
+          System.err.println("Received reply error: " + exception);
+          finishLatch.countDown();
+        }
+        public void onCompleted() {
+          finishLatch.countDown();
+        }
+      }, "TS_3", DHBuilder.NewMetric("cpu", Health.Status.UNHEALTHY, 40.0f), DHBuilder.NewMetric("disk", Health.Status.HEALTHY, 70.0f));
+      try {
+        finishLatch.await();
+      } catch (InterruptedException exception) {
+      }
       System.out.println("Done!");
     }
 }

@@ -3,6 +3,8 @@ package edu.jhu.order.deephealth;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
+import io.grpc.stub.StreamObserver;
+import com.google.protobuf.Message;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -58,6 +60,9 @@ public class DHClient
 
   public boolean init(String addr, int port, String module, String id)
   {
+    if (ready)
+      return true;
+
     this.serverAddr = addr;
     this.serverPort = port;
     this.module = module;
@@ -162,6 +167,53 @@ public class DHClient
     return report(this.id, metrics);
   }
 
+  private static final StreamObserver<SubmitReportReply> gEmptySubmityResponseObserver = new StreamObserver<SubmitReportReply>() {
+      @Override
+      public void onNext(SubmitReportReply reply) {
+      }
+      @Override
+      public void onError(Throwable t) {
+      }
+      @Override
+      public void onCompleted() {
+      }
+  };
+
+  public void reportAsync(final AsyncCallBack cb, String subject, Metric... metrics) 
+  {
+    if (!ready)
+      return;
+    long timeMillis = System.currentTimeMillis();
+    logger.info("Asynchronously submitting report from " + id + " about " + subject + " at " + timeMillis);
+    Observation observation = DHBuilder.NewObservation(timeMillis, metrics);
+    Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
+    SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
+    SubmitReportReply reply; 
+
+    StreamObserver<SubmitReportReply> responseObserver;
+    if (cb == null) {
+      responseObserver = gEmptySubmityResponseObserver;
+    } else {
+      responseObserver = new StreamObserver<SubmitReportReply>() {
+        @Override
+        public void onNext(SubmitReportReply reply) {
+          logger.info("Got async submit report reply: " + reply);
+          cb.onMessage(reply);
+        }
+        @Override
+        public void onError(Throwable t) {
+          logger.info("Async submit report error: " + t);
+          cb.onRpcError(t);
+        }
+        @Override
+        public void onCompleted() {
+          cb.onCompleted();
+        }
+      };
+    }
+    asyncStub.submitReport(request, responseObserver);
+  }
+
   public SubmitReportReply.Status report(String subject, Metric... metrics)
   {
     if (!ready)
@@ -169,10 +221,8 @@ public class DHClient
     long timeMillis = System.currentTimeMillis();
     logger.info("Submitting report from " + id + " about " + subject + " at " + timeMillis);
     Observation observation = DHBuilder.NewObservation(timeMillis, metrics);
-    Report report = Report.newBuilder().setObserver(id).setSubject(subject)
-      .setObservation(observation).build();
-    SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report)
-      .build();
+    Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
+    SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
     SubmitReportReply reply; 
     try {
       reply = blockingStub.submitReport(request);
@@ -222,5 +272,11 @@ public class DHClient
     DateFormat formatter = new SimpleDateFormat("HH:mm:ss:SSS");
     logger.info("Got ping reply with time: " + formatter.format(date));
     return result;
+  }
+
+  public interface AsyncCallBack {
+    void onMessage(Message message);
+    void onRpcError(Throwable exception);
+    void onCompleted();
   }
 }
