@@ -41,6 +41,12 @@ public class Bundle
         finishLatch.await();
       } catch (InterruptedException exception) {
       }
+
+      for (int i = 0; i < 30; i++) {
+        client.inform("TS_4", "network", Health.Status.HEALTHY, i + 60.0f, false);
+      }
+      report = client.getReport("TS_4");
+      System.err.println("Received rate limited reply: " + report);
       System.out.println("Done!");
     }
 }
