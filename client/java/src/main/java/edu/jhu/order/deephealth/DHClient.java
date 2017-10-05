@@ -6,9 +6,12 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import com.google.protobuf.Message;
 
+import java.net.InetSocketAddress;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
@@ -48,6 +51,11 @@ public class DHClient
 
   private DHRateLimiter rateLimiter;
 
+  private final Map<String, InetSocketAddress> subjectToAddress = new HashMap<String, InetSocketAddress>();
+  private final Map<String, String> ipPortToSubject  = new HashMap<String, String>();
+  private final Map<String, String> ipToSubject  = new HashMap<String, String>();
+  private final Map<String, String> hostToSubject  = new HashMap<String, String>();
+
   private static DHClient instance = null;
 
   public static DHClient getInstance() {
@@ -60,6 +68,15 @@ public class DHClient
   private DHClient()
   {
     rateLimiter = new DHRateLimiter(this);
+  }
+
+  public void mapSubject(String subject, InetSocketAddress address)
+  {
+    subjectToAddress.put(subject, address);
+    ipPortToSubject.put(address.toString(), subject);
+    ipToSubject.put(address.getAddress().getHostAddress(), subject);
+    hostToSubject.put(address.getHostName(), subject);
+    logger.info("Map " + subject + " to " + address.getHostName() + "/" + address.getAddress().getHostAddress());
   }
 
   public boolean init(String addr, int port, String module, String id)
@@ -183,9 +200,24 @@ public class DHClient
       }
   };
 
-  public void inform(String subject, String name, Health.Status status, float score, boolean async)
+  public void inform(String subject, String name, Health.Status status, float score, boolean resolve)
   {
-    rateLimiter.vet(subject, name, status, score, async);
+    if (resolve) {
+      String resolved = ipToSubject.get(subject);
+      if (resolved != null)
+        subject = resolved;
+    }
+    rateLimiter.vet(subject, name, status, score, false);
+  }
+
+  public void informAysnc(String subject, String name, Health.Status status, float score, boolean resolve)
+  {
+    if (resolve) {
+      String resolved = ipToSubject.get(subject);
+      if (resolved != null)
+        subject = resolved;
+    }
+    rateLimiter.vet(subject, name, status, score, true);
   }
 
   public void reportAsync(final AsyncCallBack cb, String subject, Metric... metrics) 
@@ -287,5 +319,14 @@ public class DHClient
     void onMessage(Message message);
     void onRpcError(Throwable exception);
     void onCompleted();
+  }
+
+  public class SubjectAddrEntry {
+    public String subject;
+    public InetSocketAddress address;
+    public SubjectAddrEntry(String subject, InetSocketAddress address) {
+      this.subject = subject;
+      this.address = address;
+    }
   }
 }
