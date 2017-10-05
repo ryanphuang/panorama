@@ -1,0 +1,19 @@
+{
+    "Addr": "pano9:6688",
+    "Id": "DHS_10",
+    "LogLevel": "Info",
+    "Subjects": null,
+    "Peers": {
+        "DHS_1": "pano0:6688",
+        "DHS_10": "pano9:6688",
+        "DHS_2": "pano1:6688",
+        "DHS_3": "pano2:6688",
+        "DHS_4": "pano3:6688",
+        "DHS_5": "pano4:6688",
+        "DHS_6": "pano5:6688",
+        "DHS_7": "pano6:6688",
+        "DHS_8": "pano7:6688",
+        "DHS_9": "pano8:6688"
+    },
+    "FilterSubmission": true
+}
