@@ -13,6 +13,7 @@ type HealthServerConfig struct {
 	Subjects         []string
 	Peers            map[string]string // all peers' id and address
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
+	LogLevel         string
 }
 
 type ClassifierConfig struct {

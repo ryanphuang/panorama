@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"time"
 )
 
@@ -34,10 +35,28 @@ func NewLogger(level LogLevel, out io.Writer, prefix string) *Logger {
 	}
 }
 
-var logger *Logger = NewLogger(DebugLevel, os.Stdout, "DeepHealth:")
+var logger *Logger = NewLogger(InfoLevel, os.Stdout, "DeepHealth:")
 
 func SetLogLevel(level LogLevel) {
 	logger.Level = level
+}
+
+func SetLogLevelString(level string) {
+	level = strings.ToLower(level)
+	switch level {
+	case "debug":
+		logger.Level = DebugLevel
+	case "info":
+		logger.Level = InfoLevel
+	case "warn":
+		logger.Level = WarningLevel
+	case "error":
+		logger.Level = ErrorLevel
+	case "fatal":
+		logger.Level = FatalLevel
+	case "panic":
+		logger.Level = PanicLevel
+	}
 }
 
 func LogD(tag string, format string, a ...interface{}) {

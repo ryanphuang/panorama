@@ -10,6 +10,7 @@ import (
 
 	"deephealth/service"
 	dt "deephealth/types"
+	du "deephealth/util"
 )
 
 var (
@@ -35,6 +36,7 @@ func main() {
 		if err != nil {
 			panic(err)
 		}
+		du.SetLogLevelString(config.LogLevel)
 		myaddr, ok := config.Peers[config.Id]
 		if !ok {
 			panic("Id is not present in peers")
