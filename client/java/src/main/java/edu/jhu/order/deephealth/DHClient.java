@@ -49,7 +49,7 @@ public class DHClient
   private HealthServiceStub asyncStub;
   private boolean ready = false;
 
-  private DHRateLimiter rateLimiter;
+  private final DHRateLimiter rateLimiter;
 
   private final Map<String, InetSocketAddress> subjectToAddress = new HashMap<String, InetSocketAddress>();
   private final Map<String, String> ipPortToSubject  = new HashMap<String, String>();

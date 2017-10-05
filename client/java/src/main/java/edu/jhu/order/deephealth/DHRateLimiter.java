@@ -26,6 +26,7 @@ public class DHRateLimiter
         client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, score));
       else
         client.report(subject, DHBuilder.NewMetric(name, status, score));
+      logger.info("Permitting new report for [" + subject + ":" + name + "]");
     } else if (val.last - val.first > INTERVAL_SEC * 1000) {
       if (async)
         client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, val.score));
@@ -33,6 +34,7 @@ public class DHRateLimiter
         client.report(subject, DHBuilder.NewMetric(name, status, val.score));
       val.cnt = 0;
       val.first = System.currentTimeMillis();
+      logger.info("Permitting repeated report for [" + subject + ":" + name + "] " + val);
     } else {
       logger.info("Report for [" + subject + ":" + name + "] too frequent");
     }

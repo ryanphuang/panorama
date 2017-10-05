@@ -2,6 +2,7 @@ package edu.jhu.order.deephealth;
 
 import java.util.Set;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Logger;
 
@@ -10,7 +11,7 @@ public class DHBuffer
   private static final Logger logger = Logger.getLogger(DHBuffer.class.getName());
 
   private final Map<String, Map<AggregateKey, AggregateValue>> content = new 
-        ConcurrentHashMap<String, Map<AggregateKey, AggregateValue>>();
+        HashMap<String, Map<AggregateKey, AggregateValue>>();
 
   public class AggregateKey
   {
@@ -24,8 +25,8 @@ public class DHBuffer
 
     @Override
     public int hashCode() {
-      int result = 17;
-      result = result * 31 + name.hashCode();
+      int result = 1;
+      result = result * 17 + name.hashCode();
       result = result * 31 + status.hashCode();
       return result;
     }
@@ -37,7 +38,12 @@ public class DHBuffer
       if (!(another instanceof AggregateKey))
         return false;
       AggregateKey r = (AggregateKey) another;
-      return name == r.name && status == r.status;
+      return name.equals(r.name) && status.equals(r.status);
+    }
+
+    @Override
+    public String toString() {
+      return name + "-" + status;
     }
   }
 
@@ -91,21 +97,25 @@ public class DHBuffer
   public AggregateValue insert(String subject, String name, Health.Status status, float score) {
     Map<AggregateKey, AggregateValue> aggs = content.get(subject);
     if (aggs == null) {
+      logger.info("No aggregate map for " + subject);
       aggs = new ConcurrentHashMap<AggregateKey, AggregateValue>();
       content.put(subject, aggs);
     }
     AggregateKey key = new AggregateKey(name, status);
-    AggregateValue val = aggs.get(key);
-    if (val == null) {
-      val = new AggregateValue(score);
+    AggregateValue val = new AggregateValue(score);
+    AggregateValue previous = aggs.putIfAbsent(key, val);
+    if (previous == null) {
+      logger.info("New aggregate value for " + subject + "/" + key);
       val.first = System.currentTimeMillis();
       val.last = val.first;
       aggs.put(key, val);
+      return val;
     } else {
-      val.cnt++;
-      val.last = System.currentTimeMillis();
+      logger.info("Existing aggregate value for " + subject + "/" + key);
+      previous.cnt++;
+      previous.last = System.currentTimeMillis();
       //TODO: add score
+      return previous;
     }
-    return val;
   }
 }
