@@ -26,7 +26,7 @@ public class DHRateLimiter
         client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, score));
       else
         client.report(subject, DHBuilder.NewMetric(name, status, score));
-    } else if (val.last - val.first > INTERVAL_SEC) {
+    } else if (val.last - val.first > INTERVAL_SEC * 1000) {
       if (async)
         client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, val.score));
       else
