@@ -98,20 +98,20 @@ public class DHBuffer
     Map<AggregateKey, AggregateValue> aggs = content.get(subject);
     if (aggs == null) {
       logger.info("No aggregate map for " + subject);
-      aggs = new ConcurrentHashMap<AggregateKey, AggregateValue>();
+      aggs = new HashMap<AggregateKey, AggregateValue>();
       content.put(subject, aggs);
     }
     AggregateKey key = new AggregateKey(name, status);
     AggregateValue val = new AggregateValue(score);
     AggregateValue previous = aggs.putIfAbsent(key, val);
     if (previous == null) {
-      logger.info("New aggregate value for " + subject + "/" + key);
+      logger.fine("New aggregate value for " + subject + "/" + key);
       val.first = System.currentTimeMillis();
       val.last = val.first;
       aggs.put(key, val);
       return val;
     } else {
-      logger.info("Existing aggregate value for " + subject + "/" + key);
+      logger.finest("Existing aggregate value for " + subject + "/" + key);
       previous.cnt++;
       previous.last = System.currentTimeMillis();
       //TODO: add score

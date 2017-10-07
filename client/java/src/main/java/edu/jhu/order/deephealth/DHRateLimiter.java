@@ -19,24 +19,29 @@ public class DHRateLimiter
   }
 
   public void vet(String subject, String name, Health.Status status, float score, boolean async) {
-    AggregateValue val = buffer.insert(subject, name, status, score);
-    if (val.cnt == 1) {
-      // new report
-      if (async)
-        client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, score));
-      else
-        client.report(subject, DHBuilder.NewMetric(name, status, score));
-      logger.info("Permitting new report for [" + subject + ":" + name + "]");
-    } else if (val.last - val.first > INTERVAL_SEC * 1000) {
-      if (async)
-        client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, val.score));
-      else
-        client.report(subject, DHBuilder.NewMetric(name, status, val.score));
-      val.cnt = 0;
-      val.first = System.currentTimeMillis();
-      logger.info("Permitting repeated report for [" + subject + ":" + name + "] " + val);
-    } else {
-      logger.info("Report for [" + subject + ":" + name + "] too frequent");
-    }
+		boolean report = false;
+		synchronized (this) {
+			AggregateValue val = buffer.insert(subject, name, status, score);
+			if (val.cnt == 1) {
+				// new report
+				logger.fine("Permitting new report for [" + subject + ":" + name + "]");
+        report = true;
+			} else if (val.last - val.first > INTERVAL_SEC * 1000) {
+        // repeated report
+				logger.info("Permitting repeated report for [" + subject + ":" + name + "] " + (val.last - val.first));
+        score = val.score;
+				val.cnt = 0;
+				val.first = System.currentTimeMillis();
+        report = true;
+			} else {
+				logger.fine("Report for [" + subject + ":" + name + "] too frequent");
+			}
+		}
+		if (report) {
+			if (async)
+				client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, score));
+			else
+				client.report(subject, DHBuilder.NewMetric(name, status, score));
+		}
   }
 }

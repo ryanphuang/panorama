@@ -6,6 +6,8 @@ import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import com.google.protobuf.Message;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetSocketAddress;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -13,7 +15,11 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.LogManager;
+import java.util.logging.LogRecord;
 import java.util.logging.Logger;
+import java.util.logging.SimpleFormatter;
 
 import edu.jhu.order.deephealth.Health.Observation;
 import edu.jhu.order.deephealth.Health.Report;
@@ -36,7 +42,26 @@ import com.google.protobuf.util.Timestamps;
 
 public class DHClient
 {
-  private static final Logger logger = Logger.getLogger(HealthServiceStub.class.getName());
+	private static final Logger logger;
+  static {
+  		Logger mainLogger = Logger.getLogger("edu.jhu.order.deephealth");
+      mainLogger.setUseParentHandlers(false);
+      ConsoleHandler handler = new ConsoleHandler();
+      handler.setFormatter(new SimpleFormatter() {
+          private static final String format = "%1$tF %1$tH:%1$tM:%1$tS,%1$tL - %2$-5s [%3$s] %4$s%n";
+          @Override
+          public synchronized String format(LogRecord lr) {
+              return String.format(format,
+                      new Date(lr.getMillis()),
+                      lr.getLevel().getLocalizedName(),
+                      lr.getLoggerName(),
+                      lr.getMessage()
+              );
+          }
+      });
+      mainLogger.addHandler(handler);
+			logger = Logger.getLogger(DHClient.class.getName());
+  }
 
   private String module;
   private String id;
