@@ -14,6 +14,19 @@ type HealthServerConfig struct {
 	Peers            map[string]string // all peers' id and address
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
 	LogLevel         string
+	GCConfig         GarbageCollectionConfig
+	BufConfig        BufferingConfig
+}
+
+type GarbageCollectionConfig struct {
+	Enable    bool
+	Frequency int
+	Threshold int
+}
+
+type BufferingConfig struct {
+	HoldTime    int
+	HoldListLen int
 }
 
 type ClassifierConfig struct {

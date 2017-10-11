@@ -28,6 +28,11 @@ const (
 	HOLD_LIST_LEN = 20              // number of items to hold at most for each subject
 )
 
+var (
+	gc_frequency time.Duration = 0
+	gc_threshold time.Duration = 0
+)
+
 type HealthGServer struct {
 	dt.HealthServerConfig
 	storage     dt.HealthStorage
@@ -47,8 +52,16 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs.storage = storage
 	gs.handles = make(map[uint64]*dt.ObserverModule)
 	// hold ignored entries for 3 minutes
-	// TODO: make this configurable
-	gs.hold_buffer = store.NewCacheList(HOLD_TIME, HOLD_LIST_LEN)
+	if config.BufConfig.HoldTime > 0 {
+		gs.hold_buffer = store.NewCacheList(time.Duration(config.BufConfig.HoldTime)*time.Minute,
+			config.BufConfig.HoldListLen)
+	} else {
+		gs.hold_buffer = store.NewCacheList(HOLD_TIME, HOLD_LIST_LEN)
+	}
+	if config.GCConfig.Enable && config.GCConfig.Frequency > 0 {
+		gc_frequency = time.Duration(config.GCConfig.Frequency) * time.Minute
+		gc_threshold = time.Duration(config.GCConfig.Threshold) * time.Minute
+	}
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
 	gs.inference = infs
@@ -78,7 +91,7 @@ func (self *HealthGServer) Start(errch chan error) error {
 	}()
 	self.inference.Start()
 	self.exchange.PingAll()
-	if GC_FREQUENCY > 0 {
+	if gc_frequency > 0 {
 		// set GC frequency to negative to disable GC
 		go self.GC()
 	}
@@ -238,8 +251,8 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 
 func (self *HealthGServer) GC() {
 	for self.s != nil {
-		time.Sleep(GC_FREQUENCY)
-		retired := self.storage.GC(GC_THRESHOLD, true) // retired reports older then GC_THREASHOLD
+		time.Sleep(gc_frequency)
+		retired := self.storage.GC(gc_threshold, true) // retired reports older then GC_THREASHOLD
 		if retired != nil && len(retired) != 0 {
 			for subject, r := range retired {
 				du.LogD(stag, "Retired %d observations for %s", r, subject)
