@@ -18,25 +18,24 @@ public class DHRateLimiter
     this.buffer = new DHBuffer();
   }
 
-  public void vet(String subject, String name, Health.Status status, float score, boolean async) {
+  public synchronized void vet(String subject, String name, Health.Status status, float score, boolean async) {
 		boolean report = false;
-		synchronized (this) {
 			AggregateValue val = buffer.insert(subject, name, status, score);
-			if (val.cnt == 1) {
+      long diff = val.last - val.first; 
+			if (diff == 0) {
 				// new report
-				logger.fine("Permitting new report for [" + subject + ":" + name + "]");
+				logger.info("Permitting new report for [" + subject + ":" + name + "]");
         report = true;
-			} else if (val.last - val.first > INTERVAL_SEC * 1000) {
+			} else if (diff > INTERVAL_SEC * 1000) {
         // repeated report
-				logger.info("Permitting repeated report for [" + subject + ":" + name + "] " + (val.last - val.first));
-        score = val.score;
+				val.first = val.last;
 				val.cnt = 0;
-				val.first = System.currentTimeMillis();
+        score = val.score;
         report = true;
+				logger.info("Permitting repeated report for [" + subject + ":" + name + "] " + diff + " ms");
 			} else {
 				logger.fine("Report for [" + subject + ":" + name + "] too frequent");
 			}
-		}
 		if (report) {
 			if (async)
 				client.reportAsync(null, subject, DHBuilder.NewMetric(name, status, score));
