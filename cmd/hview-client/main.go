@@ -26,9 +26,10 @@ const (
 	cmdHelp = `Command list:
 	 me observer
 	 report subject [<metric:status:score...>]
-	 get [report|view|inference|panorama] [observer] subject 
 	 list [subject]
+	 get [report|view|inference|panorama] [observer] subject 
 	 dump [inference|panorama]
+	 tail freq [get|dump]...
 	 ping
 	 help
 	 exit
@@ -96,6 +97,103 @@ func register() error {
 	return nil
 }
 
+func exeGet(args []string) {
+	if len(args) == 1 {
+		fmt.Println(cmdHelp)
+		return
+	}
+	switch args[1] {
+	case "report":
+		{
+			if len(args) != 3 {
+				fmt.Println(cmdHelp)
+				return
+			}
+			report, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[2]})
+			if err == nil {
+				fmt.Println(report)
+			} else {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+			}
+		}
+	case "view":
+		{
+			if len(args) != 4 {
+				fmt.Println(cmdHelp)
+				return
+			}
+			view, err := client.GetView(context.Background(), &pb.GetViewRequest{Observer: args[2], Subject: args[3]})
+			if err == nil {
+				dt.DumpView(os.Stdout, view)
+			} else {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+			}
+		}
+	case "panorama":
+		{
+			if len(args) != 3 {
+				fmt.Println(cmdHelp)
+				return
+			}
+			pano, err := client.GetPanorama(context.Background(), &pb.GetPanoramaRequest{Subject: args[2]})
+			if err == nil {
+				dt.DumpPanorama(os.Stdout, pano)
+			} else {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+			}
+		}
+	case "inference":
+		{
+			if len(args) != 3 {
+				fmt.Println(cmdHelp)
+			}
+			inference, err := client.GetInference(context.Background(), &pb.GetInferenceRequest{Subject: args[2]})
+			if err == nil {
+				fmt.Println(dt.InferenceString(inference))
+			} else {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+			}
+		}
+	default:
+		fmt.Println(cmdHelp)
+	}
+}
+
+func exeDump(args []string) {
+	if len(args) != 2 {
+		fmt.Println(cmdHelp)
+		return
+	}
+	switch args[1] {
+	case "panorama":
+		{
+			tenants, err := client.DumpPanorama(context.Background(), &empty)
+			if err == nil {
+				for subject, panorama := range tenants.Panoramas {
+					fmt.Printf("=============%s=============\n", subject)
+					dt.DumpPanorama(os.Stdout, panorama)
+				}
+			} else {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+			}
+		}
+	case "inference":
+		{
+			tenants, err := client.DumpInference(context.Background(), &empty)
+			if err == nil {
+				for subject, inference := range tenants.Inferences {
+					fmt.Printf("=============%s=============\n", subject)
+					fmt.Println(dt.InferenceString(inference))
+				}
+			} else {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+			}
+		}
+	default:
+		fmt.Println(cmdHelp)
+	}
+}
+
 func runCmd(args []string) bool {
 	cmd := args[0]
 	switch cmd {
@@ -119,143 +217,79 @@ func runCmd(args []string) bool {
 			}
 		}
 	case "report":
-		r := parseReport(args)
-		reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: r})
-		switch reply.Result {
-		case pb.SubmitReportReply_ACCEPTED:
-			fmt.Println("Accepted")
-		case pb.SubmitReportReply_IGNORED:
-			fmt.Println("Ignored")
-		case pb.SubmitReportReply_FAILED:
-			fmt.Println("Failed")
-		}
-		if err != nil {
-			fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-			return false
+		{
+			r := parseReport(args)
+			reply, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: r})
+			switch reply.Result {
+			case pb.SubmitReportReply_ACCEPTED:
+				fmt.Println("Accepted")
+			case pb.SubmitReportReply_IGNORED:
+				fmt.Println("Ignored")
+			case pb.SubmitReportReply_FAILED:
+				fmt.Println("Failed")
+			}
+			if err != nil {
+				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+				return false
+			}
 		}
 	case "get":
-		if len(args) == 1 {
-			fmt.Println(cmdHelp)
-			return false
-		}
-		switch args[1] {
-		case "report":
-			{
-				if len(args) != 3 {
-					fmt.Println(cmdHelp)
-					return false
-				}
-				report, err := client.GetLatestReport(context.Background(), &pb.GetReportRequest{Subject: args[2]})
-				if err == nil {
-					fmt.Println(report)
-					return false
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
-			}
-		case "view":
-			{
-				if len(args) != 4 {
-					fmt.Println(cmdHelp)
-					return false
-				}
-				view, err := client.GetView(context.Background(), &pb.GetViewRequest{Observer: args[2], Subject: args[3]})
-				if err == nil {
-					dt.DumpView(os.Stdout, view)
-					return false
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
-			}
-		case "panorama":
-			{
-				if len(args) != 3 {
-					fmt.Println(cmdHelp)
-					return false
-				}
-				pano, err := client.GetPanorama(context.Background(), &pb.GetPanoramaRequest{Subject: args[2]})
-				if err == nil {
-					dt.DumpPanorama(os.Stdout, pano)
-					return false
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
-			}
-		case "inference":
-			{
-				if len(args) != 3 {
-					fmt.Println(cmdHelp)
-					return false
-				}
-				inference, err := client.GetInference(context.Background(), &pb.GetInferenceRequest{Subject: args[2]})
-				if err == nil {
-					fmt.Println(dt.InferenceString(inference))
-					return false
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
-			}
-		default:
-			fmt.Println(cmdHelp)
-			return false
-		}
+		exeGet(args)
+		return false
 	case "dump":
-		if len(args) != 2 {
-			fmt.Println(cmdHelp)
-			return false
-		}
-		switch args[1] {
-		case "panorama":
-			{
-				tenants, err := client.DumpPanorama(context.Background(), &empty)
-				if err == nil {
-					for subject, panorama := range tenants.Panoramas {
-						fmt.Printf("=============%s=============\n", subject)
-						dt.DumpPanorama(os.Stdout, panorama)
-					}
-					return false
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
+		exeDump(args)
+		return false
+	case "tail":
+		{
+			if len(args) < 3 {
+				fmt.Println(cmdHelp)
+				return false
 			}
-		case "inference":
-			{
-				tenants, err := client.DumpInference(context.Background(), &empty)
-				if err == nil {
-					for subject, inference := range tenants.Inferences {
-						fmt.Printf("=============%s=============\n", subject)
-						fmt.Println(dt.InferenceString(inference))
-					}
-					return false
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
+			freq, err := strconv.Atoi(args[1])
+			if err != nil || freq <= 0 {
+				fmt.Println("Error, frequency must be a positive integer")
+				fmt.Println(cmdHelp)
+				return false
 			}
-		default:
-			fmt.Println(cmdHelp)
+			switch args[2] {
+			case "get":
+				for {
+					exeGet(args[2:])
+					time.Sleep(time.Duration(freq) * time.Second)
+				}
+			case "dump":
+				for {
+					exeDump(args[2:])
+					time.Sleep(time.Duration(freq) * time.Second)
+				}
+			default:
+				fmt.Println(cmdHelp)
+			}
 			return false
 		}
 	case "list":
-		if len(args) != 2 {
-			fmt.Println(cmdHelp)
-			return false
-		}
-		switch args[1] {
-		case "subject":
-			{
-				reply, err := client.GetObservedSubjects(context.Background(), &empty)
-				if err == nil {
-					for subject, ts := range reply.Subjects {
-						t, _ := ptypes.Timestamp(ts)
-						fmt.Printf("%s\t%s\n", subject, t)
-					}
-				} else {
-					fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
-				}
+		{
+			if len(args) != 2 {
+				fmt.Println(cmdHelp)
+				return false
 			}
-		default:
-			fmt.Println(cmdHelp)
-			return false
+			switch args[1] {
+			case "subject":
+				{
+					reply, err := client.GetObservedSubjects(context.Background(), &empty)
+					if err == nil {
+						for subject, ts := range reply.Subjects {
+							t, _ := ptypes.Timestamp(ts)
+							fmt.Printf("%s\t%s\n", subject, t)
+						}
+					} else {
+						fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
+					}
+				}
+			default:
+				fmt.Println(cmdHelp)
+				return false
+			}
 		}
 	case "me":
 		if len(args) == 1 {
