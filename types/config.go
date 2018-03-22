@@ -78,16 +78,13 @@ func SaveConfig(path string, config interface{}) error {
 	if err != nil {
 		return err
 	}
-	_, err = fmt.Fprintln(fp)
-	if err != nil {
-		return err
-	}
+	fmt.Printf("Config:\n%s", string(bytes))
 	return fp.Close()
 }
 
 func JSONMarshal(t interface{}, prefix string, indent string) ([]byte, error) {
-	buffer := bytes.Buffer{}
-	encoder := json.NewEncoder(os.Stdout)
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent(prefix, indent)
 	err := encoder.Encode(t)

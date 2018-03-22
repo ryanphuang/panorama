@@ -82,7 +82,13 @@ func main() {
 		rc.Subjects = strings.Split(*subjects, ",")
 	}
 	if len(*output) > 0 {
-		dt.SaveConfig(*output, rc)
+		fmt.Println("Saving to " + *output)
+		err := dt.SaveConfig(*output, rc)
+		if err != nil {
+			du.LogF(tag, "Failed to save config: %v", err)
+		}
+		fmt.Println("Saved")
+	} else {
+		fmt.Println(dt.JString(rc))
 	}
-	fmt.Println(dt.JString(rc))
 }
