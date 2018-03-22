@@ -86,7 +86,7 @@ func parseReport(args []string) *pb.Report {
 
 func register() error {
 	if len(observer) == 0 {
-		observer = "XFE_0"
+		observer = "client"
 	}
 	reply, err := client.Register(context.Background(), &pb.RegisterRequest{Module: "default", Observer: observer})
 	if err != nil {
