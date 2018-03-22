@@ -115,6 +115,8 @@ func main() {
 			if err != nil {
 				fmt.Printf("Fail to get host name. Use localhost instead")
 				host = "localhost"
+			} else {
+				host = strings.Split(host, ".")[0]
 			}
 			addr = host + ":6688"
 		}
