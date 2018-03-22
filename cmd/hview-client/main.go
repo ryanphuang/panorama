@@ -313,7 +313,7 @@ func main() {
 	}
 	flag.Parse()
 	args := flag.Args()
-	if len(args) < 1 || args[0] == "-h" || args[0] == "--help" {
+	if len(args) > 1 && (args[0] == "-h" || args[0] == "--help") {
 		flag.Usage()
 		os.Exit(1)
 	}

@@ -58,7 +58,7 @@ For example, to use the ZooKeeper plugin of the logtail tool, run
 ### Submit a health report
 To start deep health client in an interactive mode, run
 
-`$ hview-client pano0:6688`
+`$ hview-client -server pano0:6688`
 
 An example session is as follows:
 
