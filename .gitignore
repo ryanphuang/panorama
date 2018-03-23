@@ -4,5 +4,6 @@ target/
 hs.cfg
 deephealth.out
 deephealth.pid
+deephealth.db
 logtail.log
 logtail.err
