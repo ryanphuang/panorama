@@ -44,6 +44,7 @@ func CreateDB() (*sql.DB, error) {
 	}
 	insertPanoStmt, _ = db.Prepare(PANO_INSERT_STMT)
 	insertInferStmt, _ = db.Prepare(INFER_INSERT_STMT)
+	du.LogI(sdtag, "Database %s opened.", DB_FILE)
 	return db, nil
 }
 
@@ -57,7 +58,7 @@ func InsertReport(db *sql.DB, report *pb.Report) error {
 	if err != nil {
 		du.LogE(sdtag, "Fail to insert report from %s to %s: %s", report.Observer, report.Subject, err)
 	} else {
-		du.LogI(sdtag, "Inserted report from %s to %s", report.Observer, report.Subject)
+		du.LogD(sdtag, "Inserted report from %s to %s", report.Observer, report.Subject)
 	}
 	return err
 }
@@ -73,7 +74,7 @@ func InsertInference(db *sql.DB, inf *pb.Inference) error {
 	if err != nil {
 		du.LogE(sdtag, "Fail to insert inference from %s to %s: %s", obs, inf.Subject, err)
 	} else {
-		du.LogI(sdtag, "Inserted inference from %s to %s", obs, inf.Subject)
+		du.LogD(sdtag, "Inserted inference from %s to %s", obs, inf.Subject)
 	}
 	return err
 }
