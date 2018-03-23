@@ -1,6 +1,7 @@
 package store
 
 import (
+	"database/sql"
 	"fmt"
 	"sync"
 
@@ -22,6 +23,7 @@ type HealthInferenceStorage struct {
 	Workbooks map[string]InferMap
 	ReportCh  chan *pb.Report
 	SubjectCh chan string
+	db        *sql.DB
 
 	raw   *RawHealthStorage
 	algo  dd.InferenceAlgo
@@ -123,16 +125,31 @@ func (self *HealthInferenceStorage) DumpInference() map[string]*pb.Inference {
 	return self.Results
 }
 
-func (self *HealthInferenceStorage) Start() error {
+func (self *HealthInferenceStorage) Start(db *sql.DB) error {
+	self.db = db
 	go func() {
 		for self.alive {
 			select {
 			case subject := <-self.SubjectCh:
-				du.LogD(itag, "perform inference on subject for %s", subject)
-				self.InferSubject(subject)
+				{
+					du.LogD(itag, "perform inference on subject for %s", subject)
+					inf, err := self.InferSubject(subject)
+					if err != nil {
+						du.LogE(itag, "failed to infer for %s", subject)
+					} else {
+						InsertInference(self.db, inf)
+					}
+				}
 			case report := <-self.ReportCh:
-				du.LogD(itag, "received report for %s for inference", report.Subject)
-				self.InferReport(report)
+				{
+					du.LogD(itag, "received report for %s for inference", report.Subject)
+					inf, err := self.InferReport(report)
+					if err != nil {
+						du.LogE(itag, "failed to infer for %s", report.Subject)
+					} else {
+						InsertInference(self.db, inf)
+					}
+				}
 			}
 		}
 	}()

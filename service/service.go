@@ -95,7 +95,7 @@ func (self *HealthGServer) Start(errch chan error) error {
 	if err == nil {
 		self.db = db
 	}
-	self.inference.Start()
+	self.inference.Start(db)
 	self.exchange.PingAll()
 	if gc_frequency > 0 {
 		// set GC frequency to negative to disable GC

@@ -2,6 +2,7 @@ package store
 
 import (
 	"os"
+	"strings"
 	"time"
 
 	"database/sql"
@@ -57,6 +58,22 @@ func InsertReport(db *sql.DB, report *pb.Report) error {
 		du.LogE(sdtag, "Fail to insert report from %s to %s: %s", report.Observer, report.Subject, err)
 	} else {
 		du.LogI(sdtag, "Inserted report from %s to %s", report.Observer, report.Subject)
+	}
+	return err
+}
+
+func InsertInference(db *sql.DB, inf *pb.Inference) error {
+	if db == nil {
+		return nil
+	}
+	ts := inf.Observation.Ts
+	lts := time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
+	obs := strings.Join(inf.Observers, ",")
+	_, err := insertInferStmt.Exec(inf.Subject, obs, lts, dt.MetricsString(inf.Observation.Metrics))
+	if err != nil {
+		du.LogE(sdtag, "Fail to insert inference from %s to %s: %s", obs, inf.Subject, err)
+	} else {
+		du.LogI(sdtag, "Inserted inference from %s to %s", obs, inf.Subject)
 	}
 	return err
 }

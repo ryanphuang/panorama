@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql"
 	"time"
 
 	pb "deephealth/build/gen"
@@ -69,7 +70,7 @@ type HealthInference interface {
 	DumpInference() map[string]*pb.Inference
 
 	// Start the inference service
-	Start() error
+	Start(db *sql.DB) error
 
 	// Stop the inference service
 	Stop() error
