@@ -5,6 +5,8 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -40,11 +42,60 @@ func logError(e error) {
 	fmt.Fprintln(os.Stderr, e)
 }
 
-var observer string
+type subjectSorter struct {
+	subjects []string
+	cmp      func(str1, str2 string) bool
+}
 
+type tok struct {
+	s string
+	n int
+}
+
+var (
+	dx = regexp.MustCompile(`\d+|\D+`)
+)
+
+func tokString(str string) tok {
+	var t tok
+	x := dx.FindAllString(str, 2)
+	for _, s := range x {
+		if n, err := strconv.Atoi(s); err == nil {
+			t.n = n
+		} else {
+			t.s = s
+		}
+	}
+	return t
+}
+
+func cmpSubject(str1, str2 string) bool {
+	t1 := tokString(str1)
+	t2 := tokString(str2)
+	if t1.s == "" && (t2.s > "" || t1.n < t2.n) {
+		return true
+	}
+	if t1.s < t2.s {
+		return true
+	}
+	return t1.n < t2.n
+}
+
+func sortSubjects(subjects []string) {
+	strSort := &subjectSorter{
+		subjects: subjects,
+		cmp:      cmpSubject,
+	}
+	sort.Sort(strSort)
+}
+
+func (s *subjectSorter) Len() int           { return len(s.subjects) }
+func (s *subjectSorter) Swap(i, j int)      { s.subjects[i], s.subjects[j] = s.subjects[j], s.subjects[i] }
+func (s *subjectSorter) Less(i, j int) bool { return s.cmp(s.subjects[i], s.subjects[j]) }
+
+var observer string
 var client pb.HealthServiceClient
 var handle uint64
-
 var empty pb.Empty
 
 func parseReport(args []string) *pb.Report {
@@ -169,9 +220,14 @@ func exeDump(args []string) {
 		{
 			tenants, err := client.DumpPanorama(context.Background(), &empty)
 			if err == nil {
-				for subject, panorama := range tenants.Panoramas {
-					fmt.Printf("=============%s=============\n", subject)
-					dt.DumpPanorama(os.Stdout, panorama)
+				keys := make([]string, 0, len(tenants.Panoramas))
+				for key := range tenants.Panoramas {
+					keys = append(keys, key)
+				}
+				sortSubjects(keys)
+				for _, key := range keys {
+					fmt.Printf("=============%s=============\n", key)
+					dt.DumpPanorama(os.Stdout, tenants.Panoramas[key])
 				}
 			} else {
 				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))
@@ -181,9 +237,14 @@ func exeDump(args []string) {
 		{
 			tenants, err := client.DumpInference(context.Background(), &empty)
 			if err == nil {
-				for subject, inference := range tenants.Inferences {
-					fmt.Printf("=============%s=============\n", subject)
-					fmt.Println(dt.InferenceString(inference))
+				keys := make([]string, 0, len(tenants.Inferences))
+				for key := range tenants.Inferences {
+					keys = append(keys, key)
+				}
+				sortSubjects(keys)
+				for _, key := range keys {
+					fmt.Printf("=============%s=============\n", key)
+					fmt.Println(dt.InferenceString(tenants.Inferences[key]))
 				}
 			} else {
 				fmt.Fprintln(os.Stderr, grpc.ErrorDesc(err))

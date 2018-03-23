@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -106,8 +107,14 @@ func ObservationString(ob *pb.Observation) string {
 	}
 	var buf bytes.Buffer
 	buf.WriteString(ptypes.TimestampString(ob.Ts) + " { ")
-	for name, metric := range ob.Metrics {
-		buf.WriteString(fmt.Sprintf("%s: %s, %.1f; ", name, metric.Value.Status.String(), metric.Value.Score))
+	keys := make([]string, 0, len(ob.Metrics))
+	for key := range ob.Metrics {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	for _, key := range keys {
+		metric := ob.Metrics[key]
+		buf.WriteString(fmt.Sprintf("%s: %s, %.1f; ", key, metric.Value.Status.String(), metric.Value.Score))
 	}
 	buf.WriteString("}")
 	return buf.String()
