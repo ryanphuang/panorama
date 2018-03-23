@@ -1,6 +1,7 @@
 package service
 
 import (
+	"database/sql"
 	"fmt"
 	"net"
 	"time"
@@ -39,6 +40,7 @@ type HealthGServer struct {
 	inference   dt.HealthInference
 	exchange    dt.HealthExchange
 	hold_buffer *store.CacheList
+	db          *sql.DB
 
 	handles map[uint64]*dt.ObserverModule
 	l       net.Listener
@@ -89,6 +91,10 @@ func (self *HealthGServer) Start(errch chan error) error {
 			}
 		}
 	}()
+	db, err := store.CreateDB()
+	if err == nil {
+		self.db = db
+	}
 	self.inference.Start()
 	self.exchange.PingAll()
 	if gc_frequency > 0 {
@@ -110,6 +116,9 @@ func (self *HealthGServer) Stop(graceful bool) error {
 	self.s = nil
 	self.l = nil
 	self.inference.Stop()
+	if self.db != nil {
+		self.db.Close()
+	}
 	return nil
 }
 
@@ -147,6 +156,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		result = pb.SubmitReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
+		go store.InsertReport(self.db, report)
 		go self.AnalyzeReport(report, true)
 		go self.exchange.Propagate(report)
 	}
@@ -166,6 +176,7 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 		result = pb.LearnReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.LearnReportReply_ACCEPTED
+		go store.InsertReport(self.db, report)
 		go self.AnalyzeReport(report, false)
 		go self.exchange.Interested(in.Source.Id, report.Subject)
 	}

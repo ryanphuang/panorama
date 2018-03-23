@@ -101,23 +101,26 @@ func CompareTimestamp(a *timestamp.Timestamp, b *timestamp.Timestamp) int32 {
 	return a.Nanos - b.Nanos
 }
 
-func ObservationString(ob *pb.Observation) string {
-	if ob.Ts == nil || len(ob.Metrics) == 0 {
-		return "{}"
-	}
+func MetricsString(metrics map[string]*pb.Metric) string {
 	var buf bytes.Buffer
-	buf.WriteString(ptypes.TimestampString(ob.Ts) + " { ")
-	keys := make([]string, 0, len(ob.Metrics))
-	for key := range ob.Metrics {
+	keys := make([]string, 0, len(metrics))
+	for key := range metrics {
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
 	for _, key := range keys {
-		metric := ob.Metrics[key]
+		metric := metrics[key]
 		buf.WriteString(fmt.Sprintf("%s: %s, %.1f; ", key, metric.Value.Status.String(), metric.Value.Score))
 	}
-	buf.WriteString("}")
 	return buf.String()
+}
+
+func ObservationString(ob *pb.Observation) string {
+	if ob.Ts == nil || len(ob.Metrics) == 0 {
+		return "{}"
+	}
+	mStr := MetricsString(ob.Metrics)
+	return ptypes.TimestampString(ob.Ts) + " {" + mStr + "}"
 }
 
 func DumpPanorama(w io.Writer, pano *pb.Panorama) {
