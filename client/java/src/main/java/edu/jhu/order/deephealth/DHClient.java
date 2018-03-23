@@ -66,6 +66,7 @@ public class DHClient
   }
 
   public static final int DEFAULT_PORT = 6688;
+  public static final String CONFIG_FILE = "dh.cfg";
 
   private String module;
   private String id;
@@ -110,12 +111,17 @@ public class DHClient
 
   public boolean init(String module, String id)
   {
-    try {
-      String hostname = InetAddress.getLocalHost().getHostName().split("\\.")[0];
-      return init(hostname, DEFAULT_PORT, module, id);
-    } catch (UnknownHostException e) {
-      logger.warning("Failed to infer host name: " + e);
-      return false;
+    DHConfig config = DHConfig.parse(CONFIG_FILE);
+    if (config == null) {
+      try {
+        String hostname = InetAddress.getLocalHost().getHostName().split("\\.")[0];
+        return init(hostname, DEFAULT_PORT, module, id);
+      } catch (UnknownHostException e) {
+        logger.warning("Failed to infer host name: " + e);
+        return false;
+      }
+    } else {
+      return init(config.getDHServerAddr(), config.getDHServerPort(), module, id);
     }
   }
 
