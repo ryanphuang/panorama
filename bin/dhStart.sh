@@ -1,12 +1,16 @@
 #!/bin/bash
+DHBIN="${BASH_SOURCE-$0}"
+DHBIN="$(dirname "${DHBIN}")"
+DHBINDIR="$(cd "${DHBIN}"; pwd)"
 
-if [ $# -ne 1 ];then
+if [ $# -eq 0 ]; then
+  config="$DHBINDIR/../hs.cfg"
+elif [ $# -eq 1 ]; then
+  config=$1
+else
   echo "Usage: $0 CONFIG"
   exit 1
 fi
-
-config=$1
-
 if [ ! -f $config ]; then
 	echo "Could not find config file $config"
 	exit 1
