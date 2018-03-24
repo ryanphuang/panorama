@@ -15,6 +15,9 @@ type ObserverModule struct {
 }
 
 type HealthStorage interface {
+	// Associate database with the raw storage
+	SetDB(db *sql.DB)
+
 	// Add a subject to the observing subject list
 	AddSubject(subject string) bool
 
@@ -49,6 +52,9 @@ type HealthStorage interface {
 }
 
 type HealthInference interface {
+	// Associate database with the raw storage
+	SetDB(db *sql.DB)
+
 	// Asynchronously infer the health of a subject
 	InferSubjectAsync(subject string) error
 
@@ -70,7 +76,7 @@ type HealthInference interface {
 	DumpInference() map[string]*pb.Inference
 
 	// Start the inference service
-	Start(db *sql.DB) error
+	Start() error
 
 	// Stop the inference service
 	Stop() error

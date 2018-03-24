@@ -48,7 +48,7 @@ func CreateDB() (*sql.DB, error) {
 	return db, nil
 }
 
-func InsertReport(db *sql.DB, report *pb.Report) error {
+func InsertReportDB(db *sql.DB, report *pb.Report) error {
 	if db == nil {
 		return nil
 	}
@@ -63,7 +63,7 @@ func InsertReport(db *sql.DB, report *pb.Report) error {
 	return err
 }
 
-func InsertInference(db *sql.DB, inf *pb.Inference) error {
+func InsertInferenceDB(db *sql.DB, inf *pb.Inference) error {
 	if db == nil {
 		return nil
 	}

@@ -125,8 +125,11 @@ func (self *HealthInferenceStorage) DumpInference() map[string]*pb.Inference {
 	return self.Results
 }
 
-func (self *HealthInferenceStorage) Start(db *sql.DB) error {
+func (self *HealthInferenceStorage) SetDB(db *sql.DB) {
 	self.db = db
+}
+
+func (self *HealthInferenceStorage) Start() error {
 	go func() {
 		for self.alive {
 			select {
@@ -137,7 +140,7 @@ func (self *HealthInferenceStorage) Start(db *sql.DB) error {
 					if err != nil {
 						du.LogE(itag, "failed to infer for %s", subject)
 					} else {
-						InsertInference(self.db, inf)
+						InsertInferenceDB(self.db, inf)
 					}
 				}
 			case report := <-self.ReportCh:
@@ -147,7 +150,7 @@ func (self *HealthInferenceStorage) Start(db *sql.DB) error {
 					if err != nil {
 						du.LogE(itag, "failed to infer for %s", report.Subject)
 					} else {
-						InsertInference(self.db, inf)
+						InsertInferenceDB(self.db, inf)
 					}
 				}
 			}
