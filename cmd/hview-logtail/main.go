@@ -51,7 +51,7 @@ func reportEvent(client pb.HealthServiceClient, event *dt.Event) error {
 			return nil
 		}
 	}
-	observation := dt.NewObservationSingleMetric(event.Time, event.Context, event.Status, event.Score)
+	observation := dt.NewObservationSingleMetric(event.Time.UTC(), event.Context, event.Status, event.Score)
 	report := &pb.Report{
 		Observer:    event.Id,
 		Subject:     event.Subject,
