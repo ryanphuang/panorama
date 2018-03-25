@@ -58,6 +58,13 @@ public class DHBuffer
       this.score = score;
       this.cnt = 1;
     }
+
+    public void reset() {
+      cnt = 0;
+      score = 0;
+      first = 0;
+      last = 0;
+    }
   }
 
   public class Aggregate
@@ -94,6 +101,17 @@ public class DHBuffer
     }
   }
 
+  public boolean remove(String subject, String name, Health.Status status) {
+    Map<AggregateKey, AggregateValue> aggs = content.get(subject);
+    if (aggs == null) {
+      logger.info("No aggregate map for " + subject);
+      return false;
+    }
+    AggregateKey key = new AggregateKey(name, status);
+    aggs.remove(key);
+    return true;
+  }
+
   public AggregateValue insert(String subject, String name, Health.Status status, float score) {
     Map<AggregateKey, AggregateValue> aggs = content.get(subject);
     if (aggs == null) {
@@ -102,19 +120,25 @@ public class DHBuffer
       content.put(subject, aggs);
     }
     AggregateKey key = new AggregateKey(name, status);
-    AggregateValue val = new AggregateValue(score);
-    AggregateValue previous = aggs.putIfAbsent(key, val);
-    if (previous == null) {
+    AggregateValue previous = aggs.get(key);
+    if (previous == null || previous.cnt == 0) {
       logger.fine("New aggregate value for " + subject + "/" + key);
+      AggregateValue val;
+      if (previous == null) {
+        val = new AggregateValue(score);
+        aggs.put(key, val);
+      } else {
+        val = previous;
+      }
+      val.cnt = 1;
       val.first = System.currentTimeMillis();
       val.last = val.first;
-      aggs.put(key, val);
       return val;
     } else {
       logger.finest("Existing aggregate value for " + subject + "/" + key);
       previous.cnt++;
       previous.last = System.currentTimeMillis();
-      //TODO: add score
+      previous.score += score;
       return previous;
     }
   }
