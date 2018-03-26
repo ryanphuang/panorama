@@ -45,7 +45,7 @@ public class DHRequestProcessor extends Thread {
   {
     long time = System.currentTimeMillis();
     DHRequest request = new DHRequest(subject, name, status, score, resolve, async, time);
-    logger.info("Queuing report from about " + subject + " at " + time);
+    logger.fine("Queuing report from about " + subject + " at " + time);
     submittedRequests.add(request);
   }
 

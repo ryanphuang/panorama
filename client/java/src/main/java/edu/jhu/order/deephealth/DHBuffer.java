@@ -131,6 +131,7 @@ public class DHBuffer
         val = previous;
       }
       val.cnt = 1;
+      val.score = score; // reset score anyway
       val.first = System.currentTimeMillis();
       val.last = val.first;
       return val;
