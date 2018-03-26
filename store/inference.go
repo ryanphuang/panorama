@@ -1,7 +1,6 @@
 package store
 
 import (
-	"database/sql"
 	"fmt"
 	"sync"
 
@@ -23,15 +22,15 @@ type HealthInferenceStorage struct {
 	Workbooks map[string]InferMap
 	ReportCh  chan *pb.Report
 	SubjectCh chan string
-	db        *sql.DB
 
-	raw   *RawHealthStorage
+	raw   dt.HealthStorage
+	db    dt.HealthDB
 	algo  dd.InferenceAlgo
 	mu    *sync.RWMutex
 	alive bool
 }
 
-func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *HealthInferenceStorage {
+func NewHealthInferenceStorage(raw dt.HealthStorage, algo dd.InferenceAlgo) *HealthInferenceStorage {
 	storage := &HealthInferenceStorage{
 		Results:   make(InferMap),
 		Workbooks: make(map[string]InferMap),
@@ -44,6 +43,8 @@ func NewHealthInferenceStorage(raw *RawHealthStorage, algo dd.InferenceAlgo) *He
 	}
 	return storage
 }
+
+var _ dt.HealthInference = new(HealthInferenceStorage)
 
 func (self *HealthInferenceStorage) InferSubjectAsync(subject string) error {
 	// simply sent it to channel and return
@@ -125,7 +126,7 @@ func (self *HealthInferenceStorage) DumpInference() map[string]*pb.Inference {
 	return self.Results
 }
 
-func (self *HealthInferenceStorage) SetDB(db *sql.DB) {
+func (self *HealthInferenceStorage) SetDB(db dt.HealthDB) {
 	self.db = db
 }
 
@@ -140,7 +141,9 @@ func (self *HealthInferenceStorage) Start() error {
 					if err != nil {
 						du.LogE(itag, "failed to infer for %s", subject)
 					} else {
-						InsertInferenceDB(self.db, inf)
+						if self.db != nil {
+							self.db.InsertInference(inf)
+						}
 					}
 				}
 			case report := <-self.ReportCh:
@@ -150,7 +153,9 @@ func (self *HealthInferenceStorage) Start() error {
 					if err != nil {
 						du.LogE(itag, "failed to infer for %s", report.Subject)
 					} else {
-						InsertInferenceDB(self.db, inf)
+						if self.db != nil {
+							self.db.InsertInference(inf)
+						}
 					}
 				}
 			}

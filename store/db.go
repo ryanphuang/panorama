@@ -3,6 +3,7 @@ package store
 import (
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"database/sql"
@@ -24,16 +25,39 @@ const (
 	INFER_INSERT_STMT = "INSERT INTO inference(subject, observers, time, metrics) VALUES(?,?,?,?)"
 )
 
-var insertPanoStmt *sql.Stmt
-var insertInferStmt *sql.Stmt
+type HealthDBStorage struct {
+	DB   *sql.DB
+	File string
 
-func CreateDB() (*sql.DB, error) {
-	if _, err := os.Stat(DB_FILE); err == nil {
-		du.LogI(sdtag, "Database %s already exists", DB_FILE)
+	insertReportStmt *sql.Stmt
+	insertInferStmt  *sql.Stmt
+	reportMu         *sync.Mutex
+	inferMu          *sync.Mutex
+}
+
+func NewHealthDBStorage(file string) *HealthDBStorage {
+	storage := &HealthDBStorage{
+		File:     file,
+		reportMu: &sync.Mutex{},
+		inferMu:  &sync.Mutex{},
 	}
-	db, err := sql.Open("sqlite3", DB_FILE)
+	return storage
+}
+
+var _ dt.HealthDB = new(HealthDBStorage)
+
+func (self *HealthDBStorage) Open() (*sql.DB, error) {
+	if self.DB != nil {
+		// if a db connection is already established
+		// directly return that connection
+		return self.DB, nil
+	}
+	if _, err := os.Stat(self.File); err == nil {
+		du.LogI(sdtag, "Database %s already exists", self.File)
+	}
+	db, err := sql.Open("sqlite3", self.File)
 	if err != nil {
-		du.LogE(sdtag, "Fail to open database %s", DB_FILE)
+		du.LogE(sdtag, "Fail to open database %s", self.File)
 		return nil, err
 	}
 	_, err = db.Exec(CREATE_STMT)
@@ -42,31 +66,24 @@ func CreateDB() (*sql.DB, error) {
 		db.Close()
 		return nil, err
 	}
-	insertPanoStmt, _ = db.Prepare(PANO_INSERT_STMT)
-	insertInferStmt, _ = db.Prepare(INFER_INSERT_STMT)
-	du.LogI(sdtag, "Database %s opened.", DB_FILE)
+	self.insertReportStmt, _ = db.Prepare(PANO_INSERT_STMT)
+	self.insertInferStmt, _ = db.Prepare(INFER_INSERT_STMT)
+	du.LogI(sdtag, "Database %s opened.", self.File)
+	self.DB = db
 	return db, nil
 }
 
-func InsertReportDB(db *sql.DB, report *pb.Report) error {
-	if db == nil {
+func (self *HealthDBStorage) InsertReport(report *pb.Report) error {
+	if self.DB == nil {
 		return nil
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		du.LogE(sdtag, "Fail to obtain a transaction.")
-		return err
-	}
-	defer tx.Commit()
-	stmt, err := tx.Prepare(PANO_INSERT_STMT)
-	if err != nil {
-		du.LogE(sdtag, "Fail to prepare transaction.")
-		return err
-	}
-	defer stmt.Close()
+	self.reportMu.Lock()
+	defer self.reportMu.Unlock()
+
 	ts := report.Observation.Ts
 	lts := time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
-	_, err = stmt.Exec(report.Subject, report.Observer, lts, dt.MetricsString(report.Observation.Metrics))
+	_, err := self.insertReportStmt.Exec(report.Subject, report.Observer, lts,
+		dt.MetricsString(report.Observation.Metrics))
 	if err != nil {
 		du.LogE(sdtag, "Fail to insert report from %s to %s: %s", report.Observer, report.Subject, err)
 	} else {
@@ -75,30 +92,27 @@ func InsertReportDB(db *sql.DB, report *pb.Report) error {
 	return err
 }
 
-func InsertInferenceDB(db *sql.DB, inf *pb.Inference) error {
-	if db == nil {
+func (self *HealthDBStorage) InsertInference(inf *pb.Inference) error {
+	if self.DB == nil {
 		return nil
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		du.LogE(sdtag, "Fail to obtain a transaction.")
-		return err
-	}
-	defer tx.Commit()
-	stmt, err := tx.Prepare(INFER_INSERT_STMT)
-	if err != nil {
-		du.LogE(sdtag, "Fail to prepare transaction.")
-		return err
-	}
-	defer stmt.Close()
+	self.inferMu.Lock()
+	defer self.inferMu.Unlock()
+
 	ts := inf.Observation.Ts
 	lts := time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
 	obs := strings.Join(inf.Observers, ",")
-	_, err = stmt.Exec(inf.Subject, obs, lts, dt.MetricsString(inf.Observation.Metrics))
+	_, err := self.insertInferStmt.Exec(inf.Subject, obs, lts, dt.MetricsString(inf.Observation.Metrics))
 	if err != nil {
 		du.LogE(sdtag, "Fail to insert inference from %s to %s: %s", obs, inf.Subject, err)
 	} else {
 		du.LogD(sdtag, "Inserted inference from %s to %s", obs, inf.Subject)
 	}
 	return err
+}
+
+func (self *HealthDBStorage) Close() {
+	if self.DB != nil {
+		self.DB.Close()
+	}
 }

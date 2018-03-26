@@ -1,7 +1,6 @@
 package store
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 	"sync"
@@ -29,8 +28,8 @@ const (
 type RawHealthStorage struct {
 	Tenants   map[string]*dt.ConcurrentPanorama
 	Watchlist map[string]time.Time
-	db        *sql.DB
 
+	db dt.HealthDB
 	mu *sync.RWMutex
 }
 
@@ -50,7 +49,7 @@ func NewRawHealthStorage(subjects ...string) *RawHealthStorage {
 
 var _ dt.HealthStorage = new(RawHealthStorage)
 
-func (self *RawHealthStorage) SetDB(db *sql.DB) {
+func (self *RawHealthStorage) SetDB(db dt.HealthDB) {
 	self.db = db
 }
 
@@ -123,7 +122,9 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 		du.LogD(stag, "truncating list")
 		view.Observations = view.Observations[1:]
 	}
-	go InsertReportDB(self.db, report)
+	if self.db != nil {
+		self.db.InsertReport(report)
+	}
 	return REPORT_ACCEPTED, nil
 }
 

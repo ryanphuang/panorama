@@ -1,7 +1,6 @@
 package service
 
 import (
-	"database/sql"
 	"fmt"
 	"net"
 	"time"
@@ -37,10 +36,10 @@ var (
 type HealthGServer struct {
 	dt.HealthServerConfig
 	storage     dt.HealthStorage
+	db          dt.HealthDB
 	inference   dt.HealthInference
 	exchange    dt.HealthExchange
 	hold_buffer *store.CacheList
-	db          *sql.DB
 
 	handles map[uint64]*dt.ObserverModule
 	l       net.Listener
@@ -91,11 +90,11 @@ func (self *HealthGServer) Start(errch chan error) error {
 			}
 		}
 	}()
-	db, err := store.CreateDB()
+	self.db = store.NewHealthDBStorage(store.DB_FILE)
+	_, err = self.db.Open()
 	if err == nil {
-		self.db = db
-		self.storage.SetDB(db)
-		self.inference.SetDB(db)
+		self.storage.SetDB(self.db)
+		self.inference.SetDB(self.db)
 	}
 	self.inference.Start()
 	self.exchange.PingAll()
