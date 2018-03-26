@@ -31,7 +31,7 @@ public class DHRateLimiter
         // new report
         logger.info("Permitting new report for [" + subject + ":" + name + "]");
         report = true;
-      } else if (diff > INTERVAL_SEC * 1000 || val.cnt >= CNT_THRESHOLD) {
+      } else if (diff > INTERVAL_SEC * 1000) {
         // repeated report
         score = val.score / val.cnt;
         report = true;
