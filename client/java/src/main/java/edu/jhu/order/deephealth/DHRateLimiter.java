@@ -9,8 +9,8 @@ import edu.jhu.order.deephealth.DHBuffer.AggregateValue;
 public class DHRateLimiter
 {
   private static final Logger logger = Logger.getLogger(DHRateLimiter.class.getName());
-  private static final int CNT_THRESHOLD = 50;
-  private static final int INTERVAL_SEC = 10;
+  private static final int CNT_THRESHOLD = 5000;
+  private static final int INTERVAL_SEC = 20;
 
   // only buffer healthy reports
   private static final EnumSet<Health.Status> AGG_STATUS = EnumSet.of(Health.Status.HEALTHY);
