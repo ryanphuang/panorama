@@ -52,9 +52,21 @@ func InsertReportDB(db *sql.DB, report *pb.Report) error {
 	if db == nil {
 		return nil
 	}
+	tx, err := db.Begin()
+	if err != nil {
+		du.LogE(sdtag, "Fail to obtain a transaction.")
+		return err
+	}
+	defer tx.Commit()
+	stmt, err := tx.Prepare(PANO_INSERT_STMT)
+	if err != nil {
+		du.LogE(sdtag, "Fail to prepare transaction.")
+		return err
+	}
+	defer stmt.Close()
 	ts := report.Observation.Ts
 	lts := time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
-	_, err := insertPanoStmt.Exec(report.Subject, report.Observer, lts, dt.MetricsString(report.Observation.Metrics))
+	_, err = stmt.Exec(report.Subject, report.Observer, lts, dt.MetricsString(report.Observation.Metrics))
 	if err != nil {
 		du.LogE(sdtag, "Fail to insert report from %s to %s: %s", report.Observer, report.Subject, err)
 	} else {
@@ -67,10 +79,22 @@ func InsertInferenceDB(db *sql.DB, inf *pb.Inference) error {
 	if db == nil {
 		return nil
 	}
+	tx, err := db.Begin()
+	if err != nil {
+		du.LogE(sdtag, "Fail to obtain a transaction.")
+		return err
+	}
+	defer tx.Commit()
+	stmt, err := tx.Prepare(INFER_INSERT_STMT)
+	if err != nil {
+		du.LogE(sdtag, "Fail to prepare transaction.")
+		return err
+	}
+	defer stmt.Close()
 	ts := inf.Observation.Ts
 	lts := time.Unix(ts.Seconds, int64(ts.Nanos)).UTC()
 	obs := strings.Join(inf.Observers, ",")
-	_, err := insertInferStmt.Exec(inf.Subject, obs, lts, dt.MetricsString(inf.Observation.Metrics))
+	_, err = stmt.Exec(inf.Subject, obs, lts, dt.MetricsString(inf.Observation.Metrics))
 	if err != nil {
 		du.LogE(sdtag, "Fail to insert inference from %s to %s: %s", obs, inf.Subject, err)
 	} else {

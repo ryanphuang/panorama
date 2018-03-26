@@ -274,7 +274,7 @@ public class DHClient
   {
     if (!ready)
       return null;
-    logger.info("Submitting report from " + id + " about " + subject + " at " + time);
+    logger.info("Submitting report about " + subject + " at " + time);
     Observation observation = DHBuilder.NewObservation(time, metrics);
     Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
     SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
@@ -294,7 +294,7 @@ public class DHClient
   {
     if (!ready)
       return;
-    logger.info("Asynchronously submitting report from " + id + " about " + subject + " at " + time);
+    logger.info("Asynchronously submitting report about " + subject + " at " + time);
     Observation observation = DHBuilder.NewObservation(time, metrics);
     Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
     SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
