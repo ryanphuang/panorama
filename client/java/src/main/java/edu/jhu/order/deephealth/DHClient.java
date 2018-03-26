@@ -14,8 +14,6 @@ import java.net.UnknownHostException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.LogManager;
@@ -25,6 +23,7 @@ import java.util.logging.SimpleFormatter;
 
 import edu.jhu.order.deephealth.Health.Observation;
 import edu.jhu.order.deephealth.Health.Report;
+import edu.jhu.order.deephealth.Health.Status;
 import edu.jhu.order.deephealth.DHBuffer.AggregateValue;
 import edu.jhu.order.deephealth.Health.Metric;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceBlockingStub;
@@ -79,12 +78,9 @@ public class DHClient
   private HealthServiceStub asyncStub;
   private boolean ready = false;
 
-  private final DHRateLimiter rateLimiter;
-
-  private final Map<String, InetSocketAddress> subjectToAddress = new HashMap<String, InetSocketAddress>();
-  private final Map<String, String> ipPortToSubject  = new HashMap<String, String>();
-  private final Map<String, String> ipToSubject  = new HashMap<String, String>();
-  private final Map<String, String> hostToSubject  = new HashMap<String, String>();
+  private DHRateLimiter rateLimiter;
+  private DHResolver resolver;
+  private DHRequestProcessor processor;
 
   private static DHClient instance = null;
 
@@ -98,15 +94,8 @@ public class DHClient
   private DHClient()
   {
     rateLimiter = new DHRateLimiter();
-  }
-
-  public void mapSubject(String subject, InetSocketAddress address)
-  {
-    subjectToAddress.put(subject, address);
-    ipPortToSubject.put(address.toString(), subject);
-    ipToSubject.put(address.getAddress().getHostAddress(), subject);
-    hostToSubject.put(address.getHostName(), subject);
-    logger.info("Map " + subject + " to " + address.getHostName() + "/" + address.getAddress().getHostAddress());
+    resolver = new DHResolver();
+    processor = new DHRequestProcessor(rateLimiter, resolver, this);
   }
 
   public boolean init(String module, String id)
@@ -151,6 +140,7 @@ public class DHClient
     }
     handle = reply.getHandle();
     logger.info("Got register reply with handle " + handle);
+    processor.start();
     this.ready = true;
     return true;
   }
@@ -175,10 +165,16 @@ public class DHClient
     id = ID;
   }
 
+  public void mapSubject(String subject, InetSocketAddress address)
+  {
+    resolver.map(subject, address);
+  }
+
   public void shutdown() throws InterruptedException 
   {
     if (!ready)
       return;
+    processor.shutdown();
     channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
     ready = false;
   }
@@ -203,7 +199,7 @@ public class DHClient
     try {
       reply = blockingStub.observe(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("Observe RPC failed: " + e.getStatus());
+      logger.severe("Observe RPC failed: " + e.getStatus());
       return false;
     }
     boolean ok = reply.getSuccess();
@@ -221,7 +217,7 @@ public class DHClient
     try {
       reply = blockingStub.stopObserving(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("StopObserving RPC failed: " + e.getStatus());
+      logger.severe("StopObserving RPC failed: " + e.getStatus());
       return false;
     }
     boolean ok = reply.getSuccess();
@@ -243,59 +239,50 @@ public class DHClient
 
   public void selfInform(String name, Health.Status status, float score)
   {
-    inform(this.id, name, status, score, false);
+    if (!ready)
+      return;
+    processor.add(id, name, status, score, false, false);
   }
 
   public void selfInformAsync(String name, Health.Status status, float score)
   {
-    informAsync(this.id, name, status, score, false);
+    if (!ready)
+      return;
+    processor.add(id, name, status, score, false, true);
   }
 
   public void inform(String subject, String name, Health.Status status, float score, boolean resolve)
   {
-    if (resolve) {
-      String resolved = ipToSubject.get(subject);
-      if (resolved != null)
-        subject = resolved;
-    }
-    Metric metric = rateLimiter.vet(subject, name, status, score);
-    if (metric != null) {
-      report(subject, metric);
-    }
+    if (!ready)
+      return;
+    processor.add(subject, name, status, score, resolve, false);
   }
 
-  public void informAsync(String subject, String name, Health.Status status, float score, boolean resolve)
+  public void informAsync(String subject, String name, Status status, float score, boolean resolve)
   {
-    if (resolve) {
-      String resolved = ipToSubject.get(subject);
-      if (resolved != null)
-        subject = resolved;
-    }
-    Metric metric = rateLimiter.vet(subject, name, status, score);
-    if (metric != null) {
-      reportAsync(null, subject, metric);
-    }
+    if (!ready)
+      return;
+    processor.add(subject, name, status, score, resolve, true);
   }
 
-  public SubmitReportReply.Status selfReport(Metric... metrics)
+  public SubmitReportReply.Status selfReport(long time, Metric... metrics)
   {
-    return report(this.id, metrics);
+    return report(time, id, metrics);
   }
 
-  public SubmitReportReply.Status report(String subject, Metric... metrics)
+  public SubmitReportReply.Status report(long time, String subject, Metric... metrics)
   {
     if (!ready)
       return null;
-    long timeMillis = System.currentTimeMillis();
-    logger.info("Submitting report from " + id + " about " + subject + " at " + timeMillis);
-    Observation observation = DHBuilder.NewObservation(timeMillis, metrics);
+    logger.info("Submitting report from " + id + " about " + subject + " at " + time);
+    Observation observation = DHBuilder.NewObservation(time, metrics);
     Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
     SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
     SubmitReportReply reply; 
     try {
       reply = blockingStub.submitReport(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("SubmitReport RPC failed: " + e.getStatus());
+      logger.severe("SubmitReport RPC failed: " + e.getStatus());
       return null;
     }
     SubmitReportReply.Status status = reply.getResult();
@@ -303,13 +290,12 @@ public class DHClient
     return status;
   }
 
-  public void reportAsync(final AsyncCallBack cb, String subject, Metric... metrics) 
+  public void reportAsync(long time, final AsyncCallBack cb, String subject, Metric... metrics) 
   {
     if (!ready)
       return;
-    long timeMillis = System.currentTimeMillis();
-    logger.info("Asynchronously submitting report from " + id + " about " + subject + " at " + timeMillis);
-    Observation observation = DHBuilder.NewObservation(timeMillis, metrics);
+    logger.info("Asynchronously submitting report from " + id + " about " + subject + " at " + time);
+    Observation observation = DHBuilder.NewObservation(time, metrics);
     Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
     SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
     SubmitReportReply reply; 
@@ -348,7 +334,7 @@ public class DHClient
     try {
       report = blockingStub.getLatestReport(request);
     } catch (StatusRuntimeException e) {
-      logger.warning("GetLatestReport RPC failed: " + e.getStatus());
+      logger.severe("GetLatestReport RPC failed: " + e.getStatus());
       return null;
     }
     logger.info("Result: " + report);
@@ -381,14 +367,5 @@ public class DHClient
     void onMessage(Message message);
     void onRpcError(Throwable exception);
     void onCompleted();
-  }
-
-  public class SubjectAddrEntry {
-    public String subject;
-    public InetSocketAddress address;
-    public SubjectAddrEntry(String subject, InetSocketAddress address) {
-      this.subject = subject;
-      this.address = address;
-    }
   }
 }
