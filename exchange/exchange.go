@@ -18,33 +18,64 @@ const (
 	etag = "exchange"
 )
 
-type IgnoreSet map[string]bool
+type IgnoreSet struct {
+	mu      sync.RWMutex
+	entries map[string]bool
+}
 
 type ExchangeProtocol struct {
 	Id   string // my id
 	Addr string // my addr
 
-	Peers            map[string]string    // all peers' id and address
-	SkipSubjectPeers map[string]IgnoreSet // skip sending reports about a subject to certain peers
+	Peers            map[string]string     // all peers' id and address
+	SkipSubjectPeers map[string]*IgnoreSet // skip sending reports about a subject to certain peers
 
 	Clients map[string]pb.HealthServiceClient // clients to all peers
 
 	me *pb.Peer
-	mu *sync.RWMutex
+	mu sync.RWMutex
 }
 
 var _ dt.HealthExchange = new(ExchangeProtocol)
+
+func NewIgnoreSet() *IgnoreSet {
+	return &IgnoreSet{
+		entries: make(map[string]bool),
+	}
+}
 
 func NewExchangeProtocol(config *dt.HealthServerConfig) *ExchangeProtocol {
 	return &ExchangeProtocol{
 		Id:               config.Id,
 		Addr:             config.Addr,
 		Peers:            config.Peers,
-		SkipSubjectPeers: make(map[string]IgnoreSet),
+		SkipSubjectPeers: make(map[string]*IgnoreSet),
 		Clients:          make(map[string]pb.HealthServiceClient),
 		me:               &pb.Peer{string(config.Id), config.Addr},
-		mu:               &sync.RWMutex{},
 	}
+}
+
+func (self *IgnoreSet) Test(peer string) bool {
+	self.mu.RLock()
+	_, ok := self.entries[peer]
+	self.mu.RUnlock()
+	return ok
+}
+
+func (self *IgnoreSet) Set(peer string) {
+	self.mu.Lock()
+	self.entries[peer] = true
+	self.mu.Unlock()
+}
+
+func (self *IgnoreSet) Remove(subject string, peer string) {
+	self.mu.Lock()
+	_, ok := self.entries[peer]
+	delete(self.entries, peer) // remove peer from the ignoreset
+	if ok {
+		du.LogD(etag, "removing %s from the ignoreset of peer %s", subject, peer)
+	}
+	self.mu.Unlock()
 }
 
 func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
@@ -61,8 +92,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			continue // skip send to self
 		}
 		if ignoreset != nil {
-			_, ok := ignoreset[peer]
-			if ok {
+			if ignoreset.Test(peer) {
 				continue
 			}
 		}
@@ -80,13 +110,13 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 		}
 		du.LogD(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
 		if reply.Result == pb.LearnReportReply_IGNORED {
-			self.mu.Lock()
 			if ignoreset == nil {
-				ignoreset = make(IgnoreSet)
+				ignoreset = NewIgnoreSet()
+				self.mu.Lock()
 				self.SkipSubjectPeers[report.Subject] = ignoreset
+				self.mu.Unlock()
 			}
-			ignoreset[peer] = true
-			self.mu.Unlock()
+			ignoreset.Set(peer)
 			du.LogD(etag, "ignore report on subject %s from %s in the future", report.Subject, peer)
 		}
 	}
@@ -132,28 +162,24 @@ func (self *ExchangeProtocol) PingAll() (map[string]*pb.PingReply, error) {
 
 func (self *ExchangeProtocol) Interested(peer string, subject string) bool {
 	self.mu.Lock()
-	defer self.mu.Unlock()
 	ignoreset, ok := self.SkipSubjectPeers[subject]
 	if !ok { // no ignoreset yet, great
 		return false
 	}
-	_, ok = ignoreset[peer]
-	delete(ignoreset, peer) // remove peer from the ignoreset
-	if ok {
-		du.LogD(etag, "removing %s from the ignoreset of peer %s", subject, peer)
-	}
+	self.mu.Unlock()
+	ignoreset.Remove(subject, peer)
 	return true
 }
 
 func (self *ExchangeProtocol) Uninterested(peer string, subject string) bool {
 	self.mu.Lock()
-	defer self.mu.Unlock()
 	ignoreset, ok := self.SkipSubjectPeers[subject]
 	if !ok {
-		ignoreset = make(IgnoreSet)
+		ignoreset = NewIgnoreSet()
 		self.SkipSubjectPeers[subject] = ignoreset
 	}
-	ignoreset[peer] = true
+	self.mu.Unlock()
+	ignoreset.Set(peer)
 	du.LogD(etag, "stop notifying %s about health of %s in the future", peer, subject)
 	return true
 }
