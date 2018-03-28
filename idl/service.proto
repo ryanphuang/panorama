@@ -52,6 +52,9 @@ service HealthService {
 
   // Get all the peers of this DH server
   rpc GetPeers(Empty) returns (GetPeerReply) {}
+
+  // Get the ID of this health server
+  rpc GetId(Empty) returns (Peer) {}
 }
 
 message Empty {

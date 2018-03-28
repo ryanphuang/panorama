@@ -62,7 +62,7 @@ func main() {
 			Id:   args[0],
 		}
 	}
-	fmt.Printf("Starting health service at %s with config %s\n", config.Addr, config)
+	fmt.Printf("Starting health service at %s with config %v\n", config.Addr, config)
 	gs := service.NewHealthGServer(config)
 	errch := make(chan error)
 	gs.Start(errch)

@@ -303,3 +303,7 @@ func (self *HealthGServer) GetPeers(ctx context.Context, in *pb.Empty) (*pb.GetP
 	}
 	return &pb.GetPeerReply{Peers: peers}, nil
 }
+
+func (self *HealthGServer) GetId(ctx context.Context, in *pb.Empty) (*pb.Peer, error) {
+	return &pb.Peer{Id: self.Id, Addr: self.Addr}, nil
+}
