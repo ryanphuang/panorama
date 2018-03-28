@@ -44,6 +44,36 @@ func TestSubmitReport(t *testing.T) {
 	fmt.Println("Submitted report")
 }
 
+func BenchmarkSubmitReportAsync(b *testing.B) {
+	metrics := map[string]*pb.Value{
+		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+		"network": &pb.Value{pb.Status_HEALTHY, 95},
+	}
+	report := dt.NewReport("XFE_2", "TS_3", metrics)
+	requestCh := make(chan *pb.Report)
+	doneCh := make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-requestCh:
+				{
+					// For async submission benchmarking, we use the channel to approximate a
+					// worker queue. The client perceived latency is only the time to insert
+					// a request to the queue, but not the processing time. Therefore, we
+					// should just count the channel receiving time without doing the submission.
+				}
+			case <-doneCh:
+				break
+			}
+		}
+	}()
+	for i := 0; i < b.N; i++ {
+		requestCh <- report
+	}
+	doneCh <- true
+}
+
 func BenchmarkSubmitReport(b *testing.B) {
 	metrics := map[string]*pb.Value{
 		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
