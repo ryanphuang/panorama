@@ -9,10 +9,11 @@ enum Status {
   INVALID = 0;
   NA = 1;
   HEALTHY = 2;
-  MAYBE_UNHEALTHY = 3;
-  UNHEALTHY = 4;
-  DYING = 5;
-  DEAD = 6;
+  PENDING = 3;
+  MAYBE_UNHEALTHY = 4;
+  UNHEALTHY = 5;
+  DYING = 6;
+  DEAD = 7;
 }
 
 // A value is a measurement unit of an entity's health

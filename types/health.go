@@ -169,6 +169,8 @@ func StatusFromFullStr(status string) pb.Status {
 		return pb.Status_UNHEALTHY
 	case "healthy":
 		return pb.Status_HEALTHY
+	case "pending":
+		return pb.Status_PENDING
 	case "maybe_unhealthy":
 		return pb.Status_MAYBE_UNHEALTHY
 	case "dying":
@@ -188,6 +190,8 @@ func StatusFromStr(status string) pb.Status {
 		return pb.Status_UNHEALTHY
 	case "h":
 		return pb.Status_HEALTHY
+	case "p":
+		return pb.Status_PENDING
 	case "m":
 		return pb.Status_MAYBE_UNHEALTHY
 	case "d":

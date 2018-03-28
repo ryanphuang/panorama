@@ -295,3 +295,11 @@ func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
 	du.LogD(stag, "sent report for %s for inference", report.Subject)
 	self.inference.InferReportAsync(report)
 }
+
+func (self *HealthGServer) GetPeers(ctx context.Context, in *pb.Empty) (*pb.GetPeerReply, error) {
+	peers := make([]*pb.Peer, 0, len(self.Peers))
+	for id, addr := range self.Peers {
+		peers = append(peers, &pb.Peer{Id: id, Addr: addr})
+	}
+	return &pb.GetPeerReply{Peers: peers}, nil
+}

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -102,20 +103,39 @@ func BenchmarkGetInference(b *testing.B) {
 	}
 }
 
+func BenchmarkPropagate(b *testing.B) {
+	/*
+		metrics := map[string]*pb.Value{
+			"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+			"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+			"network": &pb.Value{pb.Status_HEALTHY, 95},
+		}
+		report := dt.NewReport("XFE_2", "TS_3", metrics)
+	*/
+	reply, err := client.GetPeers(context.Background(), &pb.Empty{})
+	if err != nil {
+		fmt.Println("Failed to get service peers")
+		return
+	}
+	fmt.Println("Executed")
+	for _, peer := range reply.Peers {
+		fmt.Printf("I have a peer called %s at %s\n", peer.Id, peer.Addr)
+	}
+}
+
 func TestMain(m *testing.M) {
 	flag.Parse()
 
 	var addr string
 
-	var config *dt.HealthServerConfig
-	if len(*faddr) == 0 {
-		port := portstart + int(r.Intn(portend-portstart))
-		addr = fmt.Sprintf("localhost:%d", port)
-	} else {
-		addr = *faddr
-	}
-
 	if *create {
+		if len(*faddr) == 0 {
+			port := portstart + int(r.Intn(portend-portstart))
+			addr = fmt.Sprintf("localhost:%d", port)
+		} else {
+			addr = *faddr
+		}
+		var config *dt.HealthServerConfig
 		subjects := []string{"TS_1", "TS_2", "TS_3", "TS_4"}
 		config = &dt.HealthServerConfig{
 			Addr:     addr,
@@ -127,6 +147,19 @@ func TestMain(m *testing.M) {
 		errch := make(chan error)
 		gs.Start(errch)
 		time.Sleep(3)
+	} else {
+		if len(*faddr) == 0 {
+			host, err := os.Hostname()
+			if err != nil {
+				fmt.Printf("Fail to get host name. Use localhost instead")
+				host = "localhost"
+			} else {
+				host = strings.Split(host, ".")[0]
+			}
+			addr = host + ":6688"
+		} else {
+			addr = *faddr
+		}
 	}
 
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
