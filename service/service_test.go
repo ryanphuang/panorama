@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"os"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -24,6 +25,7 @@ const (
 
 var client pb.HealthServiceClient
 var handle uint64
+var clients map[string]pb.HealthServiceClient
 
 var r = rand.New(rand.NewSource(time.Now().UnixNano()))
 var (
@@ -104,22 +106,51 @@ func BenchmarkGetInference(b *testing.B) {
 }
 
 func BenchmarkPropagate(b *testing.B) {
-	/*
-		metrics := map[string]*pb.Value{
-			"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-			"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-			"network": &pb.Value{pb.Status_HEALTHY, 95},
-		}
-		report := dt.NewReport("XFE_2", "TS_3", metrics)
-	*/
-	reply, err := client.GetPeers(context.Background(), &pb.Empty{})
+	myid, err := client.GetId(context.Background(), &pb.Empty{})
 	if err != nil {
-		fmt.Println("Failed to get service peers")
+		fmt.Errorf("Failed to get my id\n")
 		return
 	}
-	fmt.Println("Executed")
+	reply, err := client.GetPeers(context.Background(), &pb.Empty{})
+	if err != nil {
+		fmt.Errorf("Failed to get service peers\n")
+		return
+	}
 	for _, peer := range reply.Peers {
-		fmt.Printf("I have a peer called %s at %s\n", peer.Id, peer.Addr)
+		if peer.Id == myid.Id {
+			continue
+		}
+		_, ok := clients[peer.Id]
+		if ok {
+			continue
+		}
+		conn, err := grpc.Dial(peer.Addr, grpc.WithInsecure())
+		if err != nil {
+			fmt.Errorf("Failed to connect to peer %s at %s\n", peer.Id, peer.Addr)
+		}
+		clients[peer.Id] = pb.NewHealthServiceClient(conn)
+	}
+	metrics := map[string]*pb.Value{
+		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+		"network": &pb.Value{pb.Status_HEALTHY, 95},
+	}
+	report := dt.NewReport("XFE_2", "TS_3", metrics)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		request := &pb.LearnReportRequest{Source: myid, Report: report}
+		var wg sync.WaitGroup
+		for peer, client := range clients {
+			wg.Add(1)
+			go func() {
+				_, err := client.LearnReport(context.Background(), request)
+				if err != nil {
+					fmt.Errorf("failed to propagate report about %s to %s\n", report.Subject, peer)
+				}
+				wg.Done()
+			}()
+		}
+		wg.Wait()
 	}
 }
 
@@ -143,6 +174,7 @@ func TestMain(m *testing.M) {
 			Subjects: subjects,
 		}
 		du.SetLogLevel(du.ErrorLevel)
+		fmt.Printf("Creating DH service at %s\n", addr)
 		gs := NewHealthGServer(config)
 		errch := make(chan error)
 		gs.Start(errch)
@@ -160,6 +192,7 @@ func TestMain(m *testing.M) {
 		} else {
 			addr = *faddr
 		}
+		fmt.Printf("Connecting to DH server at %s\n", addr)
 	}
 
 	conn, err := grpc.Dial(addr, grpc.WithInsecure())
@@ -172,6 +205,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(fmt.Sprintf("Fail to register with the health service: %v", err))
 	}
+	clients = make(map[string]pb.HealthServiceClient)
 	handle = reply.Handle
 	os.Exit(m.Run())
 }
