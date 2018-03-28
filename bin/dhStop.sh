@@ -23,3 +23,5 @@ else
 fi
 
 pkill -9 hview-server 2>/dev/null
+
+exit 0
