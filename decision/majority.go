@@ -107,6 +107,7 @@ func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
 	for ; i >= 0; i-- {
 		val := view.Observations[i]
 		for name, metric := range val.Metrics {
+			// fmt.Printf("time %v, name %s, metric %v\n", val.Ts, name, metric)
 			agg, ok := aggs[name]
 			if !ok {
 				agg = &aggCnt{cnt: 0, stop: false}
@@ -121,7 +122,16 @@ func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
 				agg.cnt = agg.cnt + 1
 			} else {
 				m1 := metrics[name]
-				if m1.Value.Status != metric.Value.Status {
+				if metric.Value.Status == pb.Status_PENDING && m1.Value.Status == pb.Status_HEALTHY {
+					// if the current status is healthy and the older status is pending,
+					// then the two statuses get merged to healthy because the pending status
+					// is only a temporary status
+					du.LogI(mtag, "resolved a pending status on %s from %s", name, view.Observer)
+
+					// here, we don't increment agg cnt, which means that we will keep resolving
+					// TODO: it may be necessary to set a limit on the resolving
+					continue
+				} else if m1.Value.Status != metric.Value.Status {
 					// if the two metrics have different statuses
 					// the recent one always override the old one.
 					// the look back stops.
