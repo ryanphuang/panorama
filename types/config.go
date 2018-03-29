@@ -14,8 +14,11 @@ type HealthServerConfig struct {
 	Peers            map[string]string // all peers' id and address
 	FilterSubmission bool              // whether to filter submitted report based on the subject id
 	LogLevel         string
-	GCConfig         GarbageCollectionConfig
-	BufConfig        BufferingConfig
+	DumpMemUsage     bool
+	DBFile           string
+
+	GCConfig  GarbageCollectionConfig
+	BufConfig BufferingConfig
 }
 
 type GarbageCollectionConfig struct {

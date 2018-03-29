@@ -90,11 +90,13 @@ func (self *HealthGServer) Start(errch chan error) error {
 			}
 		}
 	}()
-	self.db = store.NewHealthDBStorage(store.DB_FILE)
-	_, err = self.db.Open()
-	if err == nil {
-		self.storage.SetDB(self.db)
-		self.inference.SetDB(self.db)
+	if len(self.DBFile) > 0 {
+		self.db = store.NewHealthDBStorage(self.DBFile)
+		_, err = self.db.Open()
+		if err == nil {
+			self.storage.SetDB(self.db)
+			self.inference.SetDB(self.db)
+		}
 	}
 	self.inference.Start()
 	self.exchange.PingAll()

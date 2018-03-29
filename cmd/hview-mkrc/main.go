@@ -24,6 +24,7 @@ var (
 	fixport   = flag.Int("fix_port", -1, "fix port instead of random port number")
 	subjects  = flag.String("subjects", "", "comma separated list of subjects to watch for health,\neffective only when FilterSubmission is true")
 	filter    = flag.Bool("filter", false, "whether to filter health reports based on subjects")
+	dbfile    = flag.String("dbfile", "deephealth.db", "database file to persist health information")
 	output    = flag.String("output", "", "file path to output the generated RC")
 )
 
@@ -81,6 +82,7 @@ func main() {
 	if len(*subjects) > 0 {
 		rc.Subjects = strings.Split(*subjects, ",")
 	}
+	rc.DBFile = *dbfile
 	if len(*output) > 0 {
 		fmt.Println("Saving to " + *output)
 		err := dt.SaveConfig(*output, rc)

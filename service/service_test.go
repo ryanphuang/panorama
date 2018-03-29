@@ -85,7 +85,7 @@ func BenchmarkSubmitReport(b *testing.B) {
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	for i := 0; i < b.N; i++ {
-		client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+		client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: report})
 	}
 }
 
@@ -97,7 +97,7 @@ func BenchmarkGetInference(b *testing.B) {
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	for i := 0; i < b.N; i++ {
-		client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Report: report})
+		client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: report})
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

@@ -75,7 +75,7 @@ func (self *HealthInferenceStorage) InferSubject(subject string) (*pb.Inference,
 	if inference == nil {
 		return nil, fmt.Errorf("could not compute inference for %s\n", subject)
 	}
-	du.LogD(itag, "inference result for %s: %s", subject, dt.ObservationString(inference.Observation))
+	// du.LogD(itag, "inference result for %s: %s", subject, dt.ObservationString(inference.Observation))
 	self.mu.Lock()
 	self.Results[subject] = inference
 	self.mu.Unlock()
@@ -142,19 +142,21 @@ func (self *HealthInferenceStorage) Start() error {
 						du.LogE(itag, "failed to infer for %s", subject)
 					} else {
 						if self.db != nil {
-							self.db.InsertInference(inf)
+							go self.db.InsertInference(inf)
 						}
 					}
 				}
 			case report := <-self.ReportCh:
 				{
-					du.LogD(itag, "received report for %s for inference", report.Subject)
-					inf, err := self.InferReport(report)
-					if err != nil {
-						du.LogE(itag, "failed to infer for %s", report.Subject)
-					} else {
-						if self.db != nil {
-							self.db.InsertInference(inf)
+					if len(report.Subject) != 0 {
+						du.LogD(itag, "received report for %s for inference", report.Subject)
+						inf, err := self.InferReport(report)
+						if err != nil {
+							du.LogE(itag, "failed to infer for %s", report.Subject)
+						} else {
+							if self.db != nil {
+								go self.db.InsertInference(inf)
+							}
 						}
 					}
 				}

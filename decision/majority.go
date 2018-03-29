@@ -50,10 +50,10 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 				du.LogD(mtag, "empty view from %s", observer)
 				continue
 			}
-			du.LogD(mtag, "summarized view from %s: %s", observer, dt.ObservationString(inference.Observation))
+			// du.LogD(mtag, "summarized view from %s: %s", observer, dt.ObservationString(inference.Observation))
 			workbook[observer] = inference
 		} else {
-			du.LogD(mtag, "found summary view from %s in workbook: %s", observer, dt.ObservationString(inference.Observation))
+			// du.LogD(mtag, "found summary view from %s in workbook: %s", observer, dt.ObservationString(inference.Observation))
 		}
 		if pts == nil || dt.CompareTimestamp(pts, inference.Observation.Ts) < 0 {
 			pts = inference.Observation.Ts

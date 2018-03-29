@@ -117,13 +117,14 @@ func (self *RawHealthStorage) AddReport(report *pb.Report, filter bool) (int, er
 		du.LogD(stag, "create view for %s->%s...", report.Observer, report.Subject)
 	}
 	view.Observations = append(view.Observations, report.Observation)
-	du.LogD(stag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
+	// du.LogD(stag, "add observation to view %s->%s: %s", report.Observer, report.Subject, dt.ObservationString(report.Observation))
+	// du.PrintMemUsage(os.Stdout)
 	if len(view.Observations) > MaxReportPerView {
 		du.LogD(stag, "truncating list")
 		view.Observations = view.Observations[1:]
 	}
 	if self.db != nil {
-		self.db.InsertReport(report)
+		go self.db.InsertReport(report)
 	}
 	return REPORT_ACCEPTED, nil
 }
