@@ -255,18 +255,18 @@ public class DHClient
     processor.add(id, name, status, score, false, true);
   }
 
-  public void selfReqPending(String name, String id, float score)
+  public void selfReqPending(String name, String reqId, float score)
   {
     if (!ready)
       return;
-    tracker.add(this.id, name, id, score, false);
+    tracker.add(id, name, reqId, score, false);
   }
 
-  public void selfReqClear(String subject, String name, String id, float score)
+  public void selfReqClear(String subject, String name, String reqId, float score)
   {
     if (!ready)
       return;
-    tracker.clear(this.id, name, id, score, false);
+    tracker.clear(id, name, reqId, score, false);
   }
 
   public void reqPending(String subject, String name, String id, float score)

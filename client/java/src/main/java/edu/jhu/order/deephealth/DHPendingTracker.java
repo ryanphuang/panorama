@@ -86,14 +86,17 @@ public class DHPendingTracker extends Thread {
     running = false;
   }
 
-  public void add(String subject, String name, String id, float score, boolean resolve) {
+  public void add(String subject, String name, String reqId, float score, boolean resolve) {
     long time = System.currentTimeMillis();
     DHPendingRequest req = new DHPendingRequest(subject, name, score, resolve, time);
-    pendingRequests.put(id, req);
+    pendingRequests.put(reqId, req);
   }
 
-  public void clear(String subject, String name, String id, float score, boolean resolve) {
-    pendingRequests.remove(id);
-    processor.add(subject, name, Status.HEALTHY, score, resolve, true);
+  public void clear(String subject, String name, String reqId, float score, boolean resolve) {
+    if (pendingRequests.remove(reqId) == null) {
+      // It's likely that the pending request has been expired and reported to DH 
+      // service. In this case, we should send a follow-up healthy report
+      processor.add(subject, name, Status.HEALTHY, score, resolve, true);
+    }
   }
 }
