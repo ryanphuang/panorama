@@ -262,7 +262,7 @@ public class DHClient
     tracker.add(id, name, reqId, score, false);
   }
 
-  public void selfReqClear(String subject, String name, String reqId, float score)
+  public void selfReqClear(String name, String reqId, float score)
   {
     if (!ready)
       return;
