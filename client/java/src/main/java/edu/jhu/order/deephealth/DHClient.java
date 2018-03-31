@@ -64,7 +64,6 @@ public class DHClient
     logger = Logger.getLogger(DHClient.class.getName());
   }
 
-  public static final int DEFAULT_PORT = 6688;
   public static final String CONFIG_FILE = "dh.cfg";
 
   private String module;
@@ -81,6 +80,7 @@ public class DHClient
   private DHRateLimiter rateLimiter;
   private DHResolver resolver;
   private DHRequestProcessor processor;
+  private DHPendingTracker tracker;
 
   private static DHClient instance = null;
 
@@ -96,6 +96,7 @@ public class DHClient
     rateLimiter = new DHRateLimiter();
     resolver = new DHResolver();
     processor = new DHRequestProcessor(rateLimiter, resolver, this);
+    tracker = new DHPendingTracker(processor, DHConfig.DEFAULT_EXPIRE_MS);
   }
 
   public boolean init(String module, String id)
@@ -104,12 +105,13 @@ public class DHClient
     if (config == null) {
       try {
         String hostname = InetAddress.getLocalHost().getHostName().split("\\.")[0];
-        return init(hostname, DEFAULT_PORT, module, id);
+        return init(hostname, DHConfig.DEFAULT_PORT, module, id);
       } catch (UnknownHostException e) {
         logger.warning("Failed to infer host name: " + e);
         return false;
       }
     } else {
+      tracker.setExpirationInterval(config.getExpireMs());
       return init(config.getDHServerAddr(), config.getDHServerPort(), module, id);
     }
   }
@@ -141,6 +143,7 @@ public class DHClient
     handle = reply.getHandle();
     logger.info("Got register reply with handle " + handle);
     processor.start();
+    tracker.start();
     this.ready = true;
     return true;
   }
@@ -174,6 +177,7 @@ public class DHClient
   {
     if (!ready)
       return;
+    tracker.shutdown();
     processor.shutdown();
     channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
     ready = false;
@@ -249,6 +253,34 @@ public class DHClient
     if (!ready)
       return;
     processor.add(id, name, status, score, false, true);
+  }
+
+  public void selfReqPending(String name, String id, float score)
+  {
+    if (!ready)
+      return;
+    tracker.add(this.id, name, id, score, false);
+  }
+
+  public void selfReqClear(String subject, String name, String id, float score)
+  {
+    if (!ready)
+      return;
+    tracker.clear(this.id, name, id, score, false);
+  }
+
+  public void reqPending(String subject, String name, String id, float score)
+  {
+    if (!ready)
+      return;
+    tracker.add(subject, name, id, score, true);
+  }
+
+  public void reqClear(String subject, String name, String id, float score)
+  {
+    if (!ready)
+      return;
+    tracker.clear(subject, name, id, score, true);
   }
 
   public void inform(String subject, String name, Health.Status status, float score, boolean resolve)

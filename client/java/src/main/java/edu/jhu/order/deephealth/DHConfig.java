@@ -11,11 +11,16 @@ public class DHConfig
 {
   private static final Logger logger = Logger.getLogger(DHConfig.class.getName());
 
+  public static final int DEFAULT_PORT = 6688;
+  public static final int DEFAULT_EXPIRE_MS = 3000;
+
   protected String dhServerAddr;
-  protected int dhServerPort;
+  protected int dhServerPort = DEFAULT_PORT;
+  protected int expireMS = DEFAULT_EXPIRE_MS; // pending status expiration interval
 
   public String getDHServerAddr() { return dhServerAddr; }
   public int getDHServerPort() { return dhServerPort; }
+  public int getExpireMs() { return expireMS; }
 
   public boolean parseProperties(Properties prop)
   {
@@ -30,6 +35,9 @@ public class DHConfig
         }
         dhServerAddr = parts[0];
         dhServerPort = Integer.parseInt(parts[1]);
+        success = true;
+      } else if (key.equals("expire_ms")) {
+        expireMS = Integer.parseInt(value);
         success = true;
       }
     }
