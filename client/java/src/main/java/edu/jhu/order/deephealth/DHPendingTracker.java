@@ -5,11 +5,14 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 import edu.jhu.order.deephealth.Health.Status;
 
-public class DHPendingTracker extends Thread {
+public class DHPendingTracker {
 
 	private static final Logger logger = Logger.getLogger(DHPendingTracker.class.getName());
 
@@ -21,6 +24,8 @@ public class DHPendingTracker extends Thread {
   long nextExpirationTime;
 
   ConcurrentMap<String, DHPendingRequest> pendingRequests = new ConcurrentHashMap<String, DHPendingRequest>();
+
+  ScheduledExecutorService service = Executors.newScheduledThreadPool(1);
 
   DHRequestProcessor processor;
 
@@ -53,35 +58,31 @@ public class DHPendingTracker extends Thread {
     return (time / expirationInterval + 1) * expirationInterval;
   }
 
-  @Override
-  public void run() {
-    logger.info("DHPendingTracker started");
-    nextExpirationTime = roundToInterval(System.currentTimeMillis());
-    try {
-      while (running) {
-        currentTime = System.currentTimeMillis();
-        if (nextExpirationTime > currentTime) {
-          this.wait(nextExpirationTime - currentTime);
-          continue;
+  Runnable expireRunnable = new Runnable() {
+    @Override
+    public void run() {
+      for (Map.Entry<String, DHPendingRequest> entry : pendingRequests.entrySet()) {
+        String reqId = entry.getKey();
+        DHPendingRequest req = entry.getValue();
+        if (req.time + expirationInterval < currentTime) {
+          pendingRequests.remove(reqId);
+          logger.info("Expiring PENDING request "+ reqId);
+          processor.process(new DHRequest(req.subject, req.name, 
+                Status.PENDING, req.score, req.resolve, false, req.time));
         }
-        for (Map.Entry<String, DHPendingRequest> entry : pendingRequests.entrySet()) {
-          DHPendingRequest req = entry.getValue();
-          if (req.time + expirationInterval < currentTime) {
-            pendingRequests.remove(entry.getKey());
-            processor.process(new DHRequest(req.subject, req.name, 
-                  Status.PENDING, req.score, req.resolve, false, req.time));
-          }
-        }
-        nextExpirationTime += expirationInterval;
       }
-    } catch (InterruptedException e) {
-      logger.info("Unexpected interruption " + e);
     }
-    logger.info("DHPendingTracker exited");
+  };
+
+  public void start() {
+    logger.info("DHPendingTracker started");
+    service.scheduleWithFixedDelay(expireRunnable, expirationInterval, 
+        expirationInterval, TimeUnit.MILLISECONDS);
   }
 
   public void shutdown() {
     logger.info("Shutting down DHPendingTracker");
+    service.shutdown();
     pendingRequests.clear();
     running = false;
   }
