@@ -19,7 +19,6 @@ public class DHPendingTracker {
   int expirationInterval;
 
   volatile boolean running = true;
-  volatile long currentTime;
 
   long nextExpirationTime;
 
@@ -61,6 +60,7 @@ public class DHPendingTracker {
   Runnable expireRunnable = new Runnable() {
     @Override
     public void run() {
+      long currentTime = System.currentTimeMillis();
       for (Map.Entry<String, DHPendingRequest> entry : pendingRequests.entrySet()) {
         String reqId = entry.getKey();
         DHPendingRequest req = entry.getValue();
