@@ -105,6 +105,28 @@ func BenchmarkGetInference(b *testing.B) {
 	}
 }
 
+func BenchmarkLearn(b *testing.B) {
+	myid, err := client.GetId(context.Background(), &pb.Empty{})
+	if err != nil {
+		fmt.Errorf("Failed to get my id\n")
+		return
+	}
+	metrics := map[string]*pb.Value{
+		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
+		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
+		"network": &pb.Value{pb.Status_HEALTHY, 95},
+	}
+	report := dt.NewReport("XFE_2", "TS_3", metrics)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		request := &pb.LearnReportRequest{Source: myid, Report: report}
+	  _, err := client.LearnReport(context.Background(), request)
+	  if err != nil {
+		  fmt.Errorf("failed to propagate report about %s to %s\n", report.Subject, myid)
+	  }
+	}
+}
+
 func BenchmarkPropagate(b *testing.B) {
 	myid, err := client.GetId(context.Background(), &pb.Empty{})
 	if err != nil {
