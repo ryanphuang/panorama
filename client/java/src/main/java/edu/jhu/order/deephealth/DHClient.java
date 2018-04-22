@@ -101,15 +101,9 @@ public class DHClient
 
   public boolean init(String module, String id)
   {
-    DHConfig config = null;
-    try {
-      config = DHConfig.parse(CONFIG_FILE);
-    } catch (Exception e) {
-      logger.warning("Failed to parse config: " + e);
-    }
+    DHConfig config = DHConfig.parse(CONFIG_FILE);
     if (config == null) {
       try {
-        System.out.println("Infer host...");
         String hostname = InetAddress.getLocalHost().getHostName().split("\\.")[0];
         return init(hostname, DHConfig.DEFAULT_PORT, module, id);
       } catch (UnknownHostException e) {
