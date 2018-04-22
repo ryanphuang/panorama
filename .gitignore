@@ -7,3 +7,4 @@ deephealth.pid
 deephealth.db
 logtail.log
 logtail.err
+memusage.csv
