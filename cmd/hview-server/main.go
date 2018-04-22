@@ -69,7 +69,7 @@ func main() {
 			Id:   args[0],
 		}
 	}
-	if *memusage {
+	if *memusage || config.DumpMemUsage {
 		memf, err := os.OpenFile("memusage.csv", os.O_RDWR|os.O_CREATE, 0644)
 		if err != nil {
 			fmt.Println("Failed to create memory usage stat file")
