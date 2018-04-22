@@ -109,6 +109,7 @@ public class DHClient
     }
     if (config == null) {
       try {
+        System.out.println("Infer host...");
         String hostname = InetAddress.getLocalHost().getHostName().split("\\.")[0];
         return init(hostname, DHConfig.DEFAULT_PORT, module, id);
       } catch (UnknownHostException e) {
