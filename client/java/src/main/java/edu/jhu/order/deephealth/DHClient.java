@@ -101,7 +101,11 @@ public class DHClient
 
   public boolean init(String module, String id)
   {
-    DHConfig config = DHConfig.parse(CONFIG_FILE);
+    DHConfig config = null;
+    try {
+      config = DHConfig.parse(CONFIG_FILE);
+    } catch (Exception e) {
+    }
     if (config == null) {
       try {
         String hostname = InetAddress.getLocalHost().getHostName().split("\\.")[0];
