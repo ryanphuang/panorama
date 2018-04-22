@@ -105,6 +105,7 @@ public class DHClient
     try {
       config = DHConfig.parse(CONFIG_FILE);
     } catch (Exception e) {
+      logger.warning("Failed to parse config: " + e);
     }
     if (config == null) {
       try {
