@@ -126,6 +126,8 @@ public class DHClient
     this.module = module;
     this.id = id;
 
+    logger.info("Attempting to connect to " + addr + ":" + port + " by module " + module + " id " + id);
+
     ManagedChannelBuilder<?> channelBuilder = ManagedChannelBuilder.forAddress(
         serverAddr, serverPort).usePlaintext(true);
     this.channel = channelBuilder.build();
