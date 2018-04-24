@@ -88,6 +88,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 		ignoreset = nil
 	}
 	self.mu.RUnlock()
+  du.LogD(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
 	for peer, addr := range self.Peers {
 		if peer == self.Id {
       du.LogD(etag, "skip propagating to self")
@@ -99,6 +100,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 				continue
 			}
 		}
+    du.LogD(etag, "propagating report about %s to %s", report.Subject, peer)
 		client, err := self.getOrMakeClient(peer)
 		if err != nil {
 			du.LogE(etag, "failed to get client for %s", peer)
