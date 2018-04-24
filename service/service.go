@@ -159,7 +159,9 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		result = pb.SubmitReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
+	  du.LogD(stag, "analyzing report about %s", report.Subject)
 		go self.AnalyzeReport(report, true)
+	  du.LogD(stag, "propgating report about %s", report.Subject)
 		go self.exchange.Propagate(report)
 	}
 	return &pb.SubmitReportReply{Result: result}, err
@@ -167,7 +169,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 
 func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRequest) (*pb.LearnReportReply, error) {
 	report := in.Report
-	du.LogD(stag, "learn report about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+	du.LogD(stag, "learning report about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
 	var result pb.LearnReportReply_Status
 	rc, err := self.storage.AddReport(report, self.FilterSubmission)
 	switch rc {
