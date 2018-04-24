@@ -234,6 +234,7 @@ public class DHClient
   private static final StreamObserver<SubmitReportReply> gEmptySubmityResponseObserver = new StreamObserver<SubmitReportReply>() {
       @Override
       public void onNext(SubmitReportReply reply) {
+        logger.info("Got async submit report reply: " + reply);
       }
       @Override
       public void onError(Throwable t) {
@@ -356,6 +357,7 @@ public class DHClient
       };
     }
     asyncStub.submitReport(request, responseObserver);
+    logger.info("Submitted");
   }
 
   public Report getReport(String subject)
