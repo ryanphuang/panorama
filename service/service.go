@@ -24,6 +24,7 @@ const (
 	HANDLE_START  = 10000
 	GC_FREQUENCY  = 3 * time.Minute // frequency to invoke garbage collection
 	GC_THRESHOLD  = 5 * time.Minute // TTL threshold
+	GC_RELATIVE   = true            // garbage collect based on relative timestamp
 	HOLD_TIME     = 3 * time.Minute // time to hold ignored reports
 	HOLD_LIST_LEN = 20              // number of items to hold at most for each subject
 )
@@ -31,6 +32,7 @@ const (
 var (
 	gc_frequency time.Duration = 0
 	gc_threshold time.Duration = 0
+	gc_relative                = GC_RELATIVE
 )
 
 type HealthGServer struct {
@@ -59,9 +61,15 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	} else {
 		gs.hold_buffer = store.NewCacheList(HOLD_TIME, HOLD_LIST_LEN)
 	}
-	if config.GCConfig.Enable && config.GCConfig.Frequency > 0 {
-		gc_frequency = time.Duration(config.GCConfig.Frequency) * time.Second
-		gc_threshold = time.Duration(config.GCConfig.Threshold) * time.Second
+	if config.GCConfig.Enable {
+		if config.GCConfig.Frequency > 0 {
+			gc_frequency = time.Duration(config.GCConfig.Frequency) * time.Second
+			gc_threshold = time.Duration(config.GCConfig.Threshold) * time.Second
+		} else {
+			gc_frequency = GC_FREQUENCY
+			gc_threshold = GC_THRESHOLD
+		}
+		gc_relative = config.GCConfig.Relative
 	}
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
@@ -160,9 +168,9 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		result = pb.SubmitReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
-	  du.LogD(stag, "accepted report about %s, analyzing...", report.Subject)
+		du.LogD(stag, "accepted report about %s, analyzing...", report.Subject)
 		go self.AnalyzeReport(report, true)
-	  du.LogD(stag, "propagating report about %s", report.Subject)
+		du.LogD(stag, "propagating report about %s", report.Subject)
 		go self.exchange.Propagate(report)
 	}
 	return &pb.SubmitReportReply{Result: result}, err
@@ -176,13 +184,13 @@ func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRe
 	switch rc {
 	case store.REPORT_IGNORED:
 		result = pb.LearnReportReply_IGNORED
-	  du.LogD(stag, "ignored about report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+		du.LogD(stag, "ignored about report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
 		self.hold_buffer.Set(report.Subject, report) // put this report on hold for a while
 	case store.REPORT_FAILED:
 		result = pb.LearnReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.LearnReportReply_ACCEPTED
-	  du.LogD(stag, "accepted report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+		du.LogD(stag, "accepted report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
 		go self.AnalyzeReport(report, false)
 		go self.exchange.Interested(in.Source.Id, report.Subject)
 	}
@@ -269,7 +277,7 @@ func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.Pi
 func (self *HealthGServer) GC() {
 	for self.s != nil {
 		time.Sleep(gc_frequency)
-		retired := self.storage.GC(gc_threshold, true) // retired reports older then GC_THREASHOLD
+		retired := self.storage.GC(gc_threshold, gc_relative) // retired reports older then GC_THREASHOLD
 		if retired != nil && len(retired) != 0 {
 			for subject, r := range retired {
 				du.LogD(stag, "Retired %d observations for %s", r, subject)

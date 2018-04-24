@@ -25,6 +25,7 @@ type GarbageCollectionConfig struct {
 	Enable    bool
 	Frequency int
 	Threshold int
+	Relative  bool
 }
 
 type BufferingConfig struct {
