@@ -54,14 +54,14 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs.handles = make(map[uint64]*dt.ObserverModule)
 	// hold ignored entries for 3 minutes
 	if config.BufConfig.HoldTime > 0 {
-		gs.hold_buffer = store.NewCacheList(time.Duration(config.BufConfig.HoldTime)*time.Minute,
+		gs.hold_buffer = store.NewCacheList(time.Duration(config.BufConfig.HoldTime)*time.Second,
 			config.BufConfig.HoldListLen)
 	} else {
 		gs.hold_buffer = store.NewCacheList(HOLD_TIME, HOLD_LIST_LEN)
 	}
 	if config.GCConfig.Enable && config.GCConfig.Frequency > 0 {
-		gc_frequency = time.Duration(config.GCConfig.Frequency) * time.Minute
-		gc_threshold = time.Duration(config.GCConfig.Threshold) * time.Minute
+		gc_frequency = time.Duration(config.GCConfig.Frequency) * time.Second
+		gc_threshold = time.Duration(config.GCConfig.Threshold) * time.Second
 	}
 	var majority decision.SimpleMajorityInference
 	infs := store.NewHealthInferenceStorage(storage, majority)
