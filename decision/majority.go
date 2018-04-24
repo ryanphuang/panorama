@@ -88,6 +88,10 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 		}
 		metrics[name] = &pb.Metric{name, &pb.Value{maxstatus, stat.ScoreSum / float32(stat.Cnt)}}
 	}
+	if pts == nil {
+		// no observation found, no summary
+		return nil
+	}
 	summary.Observation = &pb.Observation{pts, metrics}
 	return summary
 }

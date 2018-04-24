@@ -93,7 +93,7 @@ func (self *HealthDBStorage) InsertReport(report *pb.Report) error {
 }
 
 func (self *HealthDBStorage) InsertInference(inf *pb.Inference) error {
-	if self.DB == nil || inf == nil {
+	if self.DB == nil {
 		return nil
 	}
 	self.inferMu.Lock()

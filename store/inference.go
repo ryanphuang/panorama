@@ -142,7 +142,7 @@ func (self *HealthInferenceStorage) Start() error {
 						du.LogE(itag, "failed to infer for %s", subject)
 					} else {
 						if self.db != nil && inf != nil {
-							self.db.InsertInference(inf)
+							go self.db.InsertInference(inf)
 						}
 					}
 				}
@@ -155,7 +155,7 @@ func (self *HealthInferenceStorage) Start() error {
 							du.LogE(itag, "failed to infer for %s", report.Subject)
 						} else {
 							if self.db != nil && inf != nil {
-								self.db.InsertInference(inf)
+								go self.db.InsertInference(inf)
 							}
 						}
 					}
