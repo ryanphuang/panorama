@@ -61,6 +61,11 @@ func (self *HealthInferenceStorage) InferReportAsync(report *pb.Report) error {
 func (self *HealthInferenceStorage) InferSubject(subject string) (*pb.Inference, error) {
 	pano := self.raw.GetPanorama(subject)
 	if pano == nil {
+		du.LogD(itag, "empty panorama for %s, reset inference result to empty", subject)
+		self.mu.Lock()
+		delete(self.Workbooks, subject)
+		delete(self.Results, subject)
+		self.mu.Unlock()
 		return nil, fmt.Errorf("cannot get panorama for %s\n", subject)
 	}
 	// since we need to re-calculate the inference for the entire subject
@@ -73,6 +78,11 @@ func (self *HealthInferenceStorage) InferSubject(subject string) (*pb.Inference,
 	inference := self.algo.InferPano(pano.Value, workbook)
 	pano.RUnlock()
 	if inference == nil {
+		du.LogD(itag, "empty inference for %s, reset result to empty", subject)
+		self.mu.Lock()
+		delete(self.Workbooks, subject)
+		delete(self.Results, subject)
+		self.mu.Unlock()
 		return nil, fmt.Errorf("could not compute inference for %s\n", subject)
 	}
 	// du.LogD(itag, "inference result for %s: %s", subject, dt.ObservationString(inference.Observation))
@@ -86,6 +96,11 @@ func (self *HealthInferenceStorage) InferReport(report *pb.Report) (*pb.Inferenc
 	// TODO: support incremental inference
 	pano := self.raw.GetPanorama(report.Subject)
 	if pano == nil {
+		du.LogD(itag, "empty panorama for %s, reset inference result to empty", report.Subject)
+		self.mu.Lock()
+		delete(self.Workbooks, report.Subject)
+		delete(self.Results, report.Subject)
+		self.mu.Unlock()
 		return nil, fmt.Errorf("cannot get panorama for %s\n", report.Subject)
 	}
 	self.mu.Lock()
@@ -103,6 +118,11 @@ func (self *HealthInferenceStorage) InferReport(report *pb.Report) (*pb.Inferenc
 	inference := self.algo.InferPano(pano.Value, workbook)
 	pano.RUnlock()
 	if inference == nil {
+		du.LogD(itag, "empty inference for %s, reset result to empty", report.Subject)
+		self.mu.Lock()
+		delete(self.Workbooks, report.Subject)
+		delete(self.Results, report.Subject)
+		self.mu.Unlock()
 		return nil, fmt.Errorf("could not compute inference for %s\n", report.Subject)
 	}
 	du.LogD(itag, "inference result for %s: %s", report.Subject, dt.ObservationString(inference.Observation))
