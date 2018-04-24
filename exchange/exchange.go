@@ -93,6 +93,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 		}
 		if ignoreset != nil {
 			if ignoreset.Test(peer) {
+		    du.LogD(etag, "skip propagating report about %s to %s", report.Subject, peer)
 				continue
 			}
 		}

@@ -167,17 +167,19 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 
 func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRequest) (*pb.LearnReportReply, error) {
 	report := in.Report
-	du.LogD(stag, "learn report about %s from %s at %s", report.Subject, in.Source.Id, in.Source.Addr)
+	du.LogD(stag, "learn report about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
 	var result pb.LearnReportReply_Status
 	rc, err := self.storage.AddReport(report, self.FilterSubmission)
 	switch rc {
 	case store.REPORT_IGNORED:
 		result = pb.LearnReportReply_IGNORED
+	  du.LogD(stag, "ignored about report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
 		self.hold_buffer.Set(report.Subject, report) // put this report on hold for a while
 	case store.REPORT_FAILED:
 		result = pb.LearnReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.LearnReportReply_ACCEPTED
+	  du.LogD(stag, "accepted report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
 		go self.AnalyzeReport(report, false)
 		go self.exchange.Interested(in.Source.Id, report.Subject)
 	}
