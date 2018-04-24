@@ -151,6 +151,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 
 	report := in.Report
 	var result pb.SubmitReportReply_Status
+	du.LogD(stag, "submitting report about %s", report.Subject)
 	rc, err := self.storage.AddReport(report, false) // never ignore local reports
 	switch rc {
 	case store.REPORT_IGNORED:
@@ -159,7 +160,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		result = pb.SubmitReportReply_FAILED
 	case store.REPORT_ACCEPTED:
 		result = pb.SubmitReportReply_ACCEPTED
-	  du.LogD(stag, "analyzing report about %s", report.Subject)
+	  du.LogD(stag, "accepted report about %s, analyzing...", report.Subject)
 		go self.AnalyzeReport(report, true)
 	  du.LogD(stag, "propgating report about %s", report.Subject)
 		go self.exchange.Propagate(report)
