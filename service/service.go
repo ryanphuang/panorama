@@ -162,7 +162,7 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 		result = pb.SubmitReportReply_ACCEPTED
 	  du.LogD(stag, "accepted report about %s, analyzing...", report.Subject)
 		go self.AnalyzeReport(report, true)
-	  du.LogD(stag, "propgating report about %s", report.Subject)
+	  du.LogD(stag, "propagating report about %s", report.Subject)
 		go self.exchange.Propagate(report)
 	}
 	return &pb.SubmitReportReply{Result: result}, err

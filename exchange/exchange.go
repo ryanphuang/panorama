@@ -81,7 +81,7 @@ func (self *IgnoreSet) Remove(subject string, peer string) {
 func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 	var ferr error
 	request := &pb.LearnReportRequest{Source: self.me, Report: report}
-	du.LogD(etag, "about to propagate report for %s", report.Subject)
+	du.LogD(etag, "about to propagate report for %s to peers %v", report.Subject, self.Peers)
 	self.mu.RLock()
 	ignoreset, ok := self.SkipSubjectPeers[report.Subject]
 	if !ok {
@@ -90,6 +90,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 	self.mu.RUnlock()
 	for peer, addr := range self.Peers {
 		if peer == self.Id {
+      du.LogD(etag, "skip propagating to self")
 			continue // skip send to self
 		}
 		if ignoreset != nil {
