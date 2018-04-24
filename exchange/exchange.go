@@ -109,7 +109,6 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			ferr = err
 			continue
 		}
-		du.LogD(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
 		if reply.Result == pb.LearnReportReply_IGNORED {
 			if ignoreset == nil {
 				ignoreset = NewIgnoreSet()
@@ -118,8 +117,10 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 				self.mu.Unlock()
 			}
 			ignoreset.Set(peer)
-			du.LogD(etag, "ignore report on subject %s from %s in the future", report.Subject, peer)
-		}
+			du.LogD(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
+		} else {
+		  du.LogD(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
+    }
 	}
 	return ferr
 }
