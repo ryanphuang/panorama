@@ -81,7 +81,7 @@ func (self *IgnoreSet) Remove(subject string, peer string) {
 func (self *ExchangeProtocol) Subscribe(subject string) error {
 	report := &pb.Report{Observer: self.me.Id, Subject: subject}
 	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_SUBSCRIPTION, Source: self.me, Report: report}
-	du.LogI(etag, "unsubscribe to reports about for %s", report.Subject)
+	du.LogI(etag, "subscribe to reports about for %s", report.Subject)
 	return self._propagate(request)
 }
 
@@ -94,7 +94,7 @@ func (self *ExchangeProtocol) Unsubscribe(subject string) error {
 
 func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_NORMAL, Source: self.me, Report: report}
-	du.LogI(etag, "about to propagate report for %s to peers %v", report.Subject, self.Peers)
+	du.LogI(etag, "about to propagate report about %s", report.Subject)
 	return self._propagate(request)
 }
 
