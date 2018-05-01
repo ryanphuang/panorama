@@ -74,8 +74,14 @@ message ObserveReply {
 }
 
 message LearnReportRequest {
-  Peer source = 1;
-  Report report = 2;
+  enum Kind {
+    NORMAL = 0; // a normal learn request
+    SUBSCRIPTION = 1; // this is a subscription request, ignore report content
+    UNSUBSCRIPTION = 2; // this is an unsubscription request, ignore report content
+  }
+  Kind kind = 1;
+  Peer source = 2;
+  Report report = 3;
 }
 
 message LearnReportReply {

@@ -26,7 +26,7 @@ const (
 	GC_THRESHOLD  = 5 * time.Minute // TTL threshold
 	GC_RELATIVE   = true            // garbage collect based on relative timestamp
 	HOLD_TIME     = 3 * time.Minute // time to hold ignored reports
-	HOLD_LIST_LEN = 20              // number of items to hold at most for each subject
+	HOLD_LIST_LEN = 60              // number of items to hold at most for each subject
 )
 
 var (
@@ -178,23 +178,41 @@ func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReport
 
 func (self *HealthGServer) LearnReport(ctx context.Context, in *pb.LearnReportRequest) (*pb.LearnReportReply, error) {
 	report := in.Report
-	du.LogD(stag, "learning report about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
-	var result pb.LearnReportReply_Status
-	rc, err := self.storage.AddReport(report, self.FilterSubmission)
-	switch rc {
-	case store.REPORT_IGNORED:
-		result = pb.LearnReportReply_IGNORED
-		du.LogD(stag, "ignored about report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
-		self.hold_buffer.Set(report.Subject, report) // put this report on hold for a while
-	case store.REPORT_FAILED:
-		result = pb.LearnReportReply_FAILED
-	case store.REPORT_ACCEPTED:
-		result = pb.LearnReportReply_ACCEPTED
-		du.LogD(stag, "accepted report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
-		go self.AnalyzeReport(report, false)
-		go self.exchange.Interested(in.Source.Id, report.Subject)
+	switch in.Kind {
+	case pb.LearnReportRequest_NORMAL:
+		{
+			du.LogD(stag, "learning report about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+			var result pb.LearnReportReply_Status
+			rc, err := self.storage.AddReport(report, self.FilterSubmission)
+			switch rc {
+			case store.REPORT_IGNORED:
+				result = pb.LearnReportReply_IGNORED
+				du.LogD(stag, "ignored about report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+				self.hold_buffer.Set(report.Subject, report) // put this report on hold for a while
+			case store.REPORT_FAILED:
+				result = pb.LearnReportReply_FAILED
+			case store.REPORT_ACCEPTED:
+				result = pb.LearnReportReply_ACCEPTED
+				du.LogD(stag, "accepted report %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+				self.exchange.Interested(in.Source.Id, report.Subject)
+				go self.AnalyzeReport(report, false)
+			}
+			return &pb.LearnReportReply{Result: result}, err
+		}
+	case pb.LearnReportRequest_SUBSCRIPTION:
+		{
+			du.LogI(stag, "got a subscription request about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+			self.exchange.Interested(in.Source.Id, report.Subject)
+			return &pb.LearnReportReply{Result: pb.LearnReportReply_ACCEPTED}, nil
+		}
+	case pb.LearnReportRequest_UNSUBSCRIPTION:
+		{
+			du.LogI(stag, "got a unsubscription request about %s from %s at %s", report.Subject, report.Observer, in.Source.Id)
+			self.exchange.Uninterested(in.Source.Id, report.Subject)
+			return &pb.LearnReportReply{Result: pb.LearnReportReply_ACCEPTED}, nil
+		}
 	}
-	return &pb.LearnReportReply{Result: result}, err
+	return &pb.LearnReportReply{Result: pb.LearnReportReply_FAILED}, nil
 }
 
 func (self *HealthGServer) GetLatestReport(ctx context.Context, in *pb.GetReportRequest) (*pb.Report, error) {

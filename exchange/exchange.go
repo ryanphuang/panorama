@@ -78,29 +78,48 @@ func (self *IgnoreSet) Remove(subject string, peer string) {
 	self.mu.Unlock()
 }
 
+func (self *ExchangeProtocol) Subscribe(subject string) error {
+	report := &pb.Report{Observer: self.me.Id, Subject: subject}
+	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_SUBSCRIPTION, Source: self.me, Report: report}
+	du.LogI(etag, "unsubscribe to reports about for %s", report.Subject)
+	return self._propagate(request)
+}
+
+func (self *ExchangeProtocol) Unsubscribe(subject string) error {
+	report := &pb.Report{Observer: self.me.Id, Subject: subject}
+	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_UNSUBSCRIPTION, Source: self.me, Report: report}
+	du.LogI(etag, "unsubscribe to reports about for %s", report.Subject)
+	return self._propagate(request)
+}
+
 func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
+	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_NORMAL, Source: self.me, Report: report}
+	du.LogI(etag, "about to propagate report for %s to peers %v", report.Subject, self.Peers)
+	return self._propagate(request)
+}
+
+func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 	var ferr error
-	request := &pb.LearnReportRequest{Source: self.me, Report: report}
-	du.LogD(etag, "about to propagate report for %s to peers %v", report.Subject, self.Peers)
 	self.mu.RLock()
+	report := request.Report
 	ignoreset, ok := self.SkipSubjectPeers[report.Subject]
 	if !ok {
 		ignoreset = nil
 	}
 	self.mu.RUnlock()
-  du.LogD(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
+	du.LogI(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
 	for peer, addr := range self.Peers {
 		if peer == self.Id {
-      du.LogD(etag, "skip propagating to self")
+			du.LogI(etag, "skip propagating to self")
 			continue // skip send to self
 		}
 		if ignoreset != nil {
 			if ignoreset.Test(peer) {
-		    du.LogD(etag, "skip propagating report about %s to %s", report.Subject, peer)
+				du.LogI(etag, "skip propagating report about %s to %s", report.Subject, peer)
 				continue
 			}
 		}
-    du.LogD(etag, "propagating report about %s to %s", report.Subject, peer)
+		du.LogI(etag, "propagating report about %s to %s", report.Subject, peer)
 		client, err := self.getOrMakeClient(peer)
 		if err != nil {
 			du.LogE(etag, "failed to get client for %s", peer)
@@ -113,7 +132,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 			ferr = err
 			continue
 		}
-		if reply.Result == pb.LearnReportReply_IGNORED {
+		if request.Kind == pb.LearnReportRequest_NORMAL && reply.Result == pb.LearnReportReply_IGNORED {
 			if ignoreset == nil {
 				ignoreset = NewIgnoreSet()
 				self.mu.Lock()
@@ -121,12 +140,13 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 				self.mu.Unlock()
 			}
 			ignoreset.Set(peer)
-			du.LogD(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
+			du.LogI(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
 		} else {
-		  du.LogD(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
-    }
+			du.LogI(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
+		}
 	}
 	return ferr
+
 }
 
 func (self *ExchangeProtocol) Ping(peer string) (*pb.PingReply, error) {
