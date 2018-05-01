@@ -146,7 +146,6 @@ func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 		}
 	}
 	return ferr
-
 }
 
 func (self *ExchangeProtocol) Ping(peer string) (*pb.PingReply, error) {
@@ -188,23 +187,23 @@ func (self *ExchangeProtocol) PingAll() (map[string]*pb.PingReply, error) {
 
 func (self *ExchangeProtocol) Interested(peer string, subject string) bool {
 	self.mu.Lock()
+	defer self.mu.Unlock()
 	ignoreset, ok := self.SkipSubjectPeers[subject]
 	if !ok { // no ignoreset yet, great
 		return false
 	}
-	self.mu.Unlock()
 	ignoreset.Remove(subject, peer)
 	return true
 }
 
 func (self *ExchangeProtocol) Uninterested(peer string, subject string) bool {
 	self.mu.Lock()
+	defer self.mu.Unlock()
 	ignoreset, ok := self.SkipSubjectPeers[subject]
 	if !ok {
 		ignoreset = NewIgnoreSet()
 		self.SkipSubjectPeers[subject] = ignoreset
 	}
-	self.mu.Unlock()
 	ignoreset.Set(peer)
 	du.LogD(etag, "stop notifying %s about health of %s in the future", peer, subject)
 	return true
