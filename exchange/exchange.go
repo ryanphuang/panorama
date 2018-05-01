@@ -107,7 +107,7 @@ func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 		ignoreset = nil
 	}
 	self.mu.RUnlock()
-	du.LogI(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
+	du.LogD(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
 	for peer, addr := range self.Peers {
 		if peer == self.Id {
 			du.LogI(etag, "skip propagating to self")

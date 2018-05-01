@@ -100,6 +100,12 @@ type HealthExchange interface {
 	// Propagate a report to other peers
 	Propagate(report *pb.Report) error
 
+	// Let others know I'd like to subscribe to reports about subject
+	Subscribe(subject string) error
+
+	// Let others know I'd like to unsubscribe to reports about subject
+	Unsubscribe(subject string) error
+
 	// Ping one peer and get a response
 	Ping(peer string) (*pb.PingReply, error)
 

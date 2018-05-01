@@ -249,11 +249,13 @@ func (self *HealthGServer) GetInference(ctx context.Context, in *pb.GetInference
 
 func (self *HealthGServer) Observe(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.AddSubject(in.Subject)
+	go self.exchange.Subscribe(in.Subject) // tell others I'd like to subscribe to subject
 	return &pb.ObserveReply{Success: ok}, nil
 }
 
 func (self *HealthGServer) StopObserving(ctx context.Context, in *pb.ObserveRequest) (*pb.ObserveReply, error) {
 	ok := self.storage.RemoveSubject(in.Subject, true)
+	go self.exchange.Unsubscribe(in.Subject) // tell others I'd like to subscribe to subject
 	return &pb.ObserveReply{Success: ok}, nil
 }
 
@@ -312,7 +314,7 @@ func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
 	if check_hold {
 		items := self.hold_buffer.Get(report.Subject)
 		if items != nil && len(items) > 0 {
-			du.LogD(stag, "found %d recent reports about %s in hold buffer", len(items), report.Subject)
+			du.LogI(stag, "found %d recent reports about %s in hold buffer", len(items), report.Subject)
 			for _, item := range items {
 				r := item.Value.(*pb.Report)
 				_, err := self.storage.AddReport(r, false)
@@ -322,7 +324,8 @@ func (self *HealthGServer) AnalyzeReport(report *pb.Report, check_hold bool) {
 					du.LogD(stag, "hold buffer report %s->%s successfully added back to storage", r.Observer, r.Subject)
 				}
 			}
-			self.hold_buffer.Empty(report.Subject) // clear the report from hold buffer
+			self.hold_buffer.Empty(report.Subject)     // clear the report from hold buffer
+			go self.exchange.Subscribe(report.Subject) // tell others I'd like to subscribe to subject
 		}
 	}
 	du.LogD(stag, "sent report for %s for inference", report.Subject)
