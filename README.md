@@ -1,4 +1,32 @@
-# *Panorama*: Deep and Collaborative Health Monitoring to Detect Gray Failure
+# *Panorama*: Capturing and Enhancing In Situ System Observability for Failure Detection
+
+## Usage
+### Requirements
+Panorama is written in Go. To use it, you must have the Go compiler installed.
+You can download the Go distribution from the [official website](https://golang.org/).
+
+In addition, the RPC layer of Panorama is built on top of [gRPC](https://grpc.io) 
+and [Protocol Buffers](https://developers.google.com/protocol-buffers). You 
+can get the protobuf for Go with `go get -u github.com/golang/protobuf/protoc-gen-go`.
+This will install the protobuf compiler at `$GOPATH/bin`. **Note**: The recent 
+Go protoc3 introduces [changes](https://groups.google.com/forum/#!topic/protobuf/N-elvFu4dFM) 
+that will generate additional fields such as `XXX_NoUnkeyedLiteral` in 
+the protobuf messages, which may cause side effects when using the message 
+in map keys or `==` test. We haven't double checked Panorama's code to 
+eliminate such side effects yet.
+
+### Installation
+Clone the source tree of Panorama to your `$GOPATH/src`, then make it:
+```
+$ cd $GOPATH
+$ git clone git@github.com:ryanphuang/deephealth.git
+$ make
+```
+
+Afterwards, you will find `hview-server`, `hview-client` in `$GOPATH/bin`.
+Panorama also comes with a thin Java client wrapper library. To get the 
+Java client library, type `make java`. The library will be generated
+in `client/java/target/dh-client-1.0-SNAPSHOT-jar-with-dependencies.jar`.
 
 ## Generate deep health server config
 
