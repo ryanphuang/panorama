@@ -86,13 +86,16 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 				maxstatus = status
 			}
 		}
-		metrics[name] = &pb.Metric{name, &pb.Value{maxstatus, stat.ScoreSum / float32(stat.Cnt)}}
+		metrics[name] = &pb.Metric{
+			Name:  name,
+			Value: &pb.Value{Status: maxstatus, Score: stat.ScoreSum / float32(stat.Cnt)},
+		}
 	}
 	if pts == nil {
 		// no observation found, no summary
 		return nil
 	}
-	summary.Observation = &pb.Observation{pts, metrics}
+	summary.Observation = &pb.Observation{Ts: pts, Metrics: metrics}
 	return summary
 }
 
@@ -154,6 +157,6 @@ func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
 			metric.Value.Score = metric.Value.Score / float32(aggs[name].cnt)
 		}
 	}
-	summary.Observation = &pb.Observation{pts, metrics}
+	summary.Observation = &pb.Observation{Ts: pts, Metrics: metrics}
 	return summary
 }

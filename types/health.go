@@ -40,7 +40,10 @@ func GetMetric(observation *pb.Observation, name string) *pb.Metric {
 func AddMetric(observation *pb.Observation, name string, status pb.Status, score float32) *pb.Observation {
 	metric, ok := observation.Metrics[name]
 	if !ok {
-		observation.Metrics[name] = &pb.Metric{name, &pb.Value{status, score}}
+		observation.Metrics[name] = &pb.Metric{
+			Name:  name,
+			Value: &pb.Value{Status: status, Score: score},
+		}
 	} else {
 		metric.Value.Status = status
 		metric.Value.Score = score
@@ -50,9 +53,12 @@ func AddMetric(observation *pb.Observation, name string, status pb.Status, score
 
 func NewObservationSingleMetric(t time.Time, name string, status pb.Status, score float32) *pb.Observation {
 	metrics := make(map[string]*pb.Metric)
-	metrics[name] = &pb.Metric{name, &pb.Value{status, score}}
+	metrics[name] = &pb.Metric{
+		Name:  name,
+		Value: &pb.Value{Status: status, Score: score},
+	}
 	if pts, err := ptypes.TimestampProto(t); err == nil {
-		return &pb.Observation{pts, metrics}
+		return &pb.Observation{Ts: pts, Metrics: metrics}
 	}
 	return nil
 }
@@ -60,7 +66,10 @@ func NewObservationSingleMetric(t time.Time, name string, status pb.Status, scor
 func NewMetrics(names ...string) map[string]*pb.Metric {
 	metrics := make(map[string]*pb.Metric)
 	for _, name := range names {
-		metrics[name] = &pb.Metric{name, &pb.Value{pb.Status_INVALID, 0.0}}
+		metrics[name] = &pb.Metric{
+			Name:  name,
+			Value: &pb.Value{Status: pb.Status_INVALID, Score: 0.0},
+		}
 	}
 	return metrics
 }
@@ -68,10 +77,13 @@ func NewMetrics(names ...string) map[string]*pb.Metric {
 func NewObservation(t time.Time, names ...string) *pb.Observation {
 	metrics := make(map[string]*pb.Metric)
 	for _, name := range names {
-		metrics[name] = &pb.Metric{name, &pb.Value{pb.Status_INVALID, 0.0}}
+		metrics[name] = &pb.Metric{
+			Name:  name,
+			Value: &pb.Value{Status: pb.Status_INVALID, Score: 0.0},
+		}
 	}
 	if pts, err := ptypes.TimestampProto(t); err == nil {
-		return &pb.Observation{pts, metrics}
+		return &pb.Observation{Ts: pts, Metrics: metrics}
 	}
 	return nil
 }
@@ -79,7 +91,7 @@ func NewObservation(t time.Time, names ...string) *pb.Observation {
 func NewReport(observer string, subject string, metrics map[string]*pb.Value) *pb.Report {
 	o := NewObservation(time.Now())
 	for k, v := range metrics {
-		o.Metrics[k] = &pb.Metric{k, v}
+		o.Metrics[k] = &pb.Metric{Name: k, Value: v}
 	}
 	return &pb.Report{
 		Observer:    observer,

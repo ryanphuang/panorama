@@ -51,7 +51,7 @@ func NewExchangeProtocol(config *dt.HealthServerConfig) *ExchangeProtocol {
 		Peers:            config.Peers,
 		SkipSubjectPeers: make(map[string]*IgnoreSet),
 		Clients:          make(map[string]pb.HealthServiceClient),
-		me:               &pb.Peer{string(config.Id), config.Addr},
+		me:               &pb.Peer{Id: string(config.Id), Addr: config.Addr},
 	}
 }
 

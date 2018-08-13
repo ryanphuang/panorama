@@ -263,7 +263,10 @@ func runCmd(args []string) bool {
 			now := time.Now()
 			pnow, err := ptypes.TimestampProto(now)
 			if err == nil {
-				request := &pb.PingRequest{Source: &pb.Peer{string(observer), "localhost"}, Time: pnow}
+				request := &pb.PingRequest{
+					Source: &pb.Peer{Id: string(observer), Addr: "localhost"},
+					Time:   pnow,
+				}
 				reply, err := client.Ping(context.Background(), request)
 				if err == nil {
 					t, err := ptypes.Timestamp(reply.Time)

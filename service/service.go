@@ -137,7 +137,7 @@ func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest)
 	var max_handle uint64 = HANDLE_START
 	for handle, module := range self.handles {
 		if module.Module == in.Module && module.Observer == in.Observer {
-			return &pb.RegisterReply{handle}, nil
+			return &pb.RegisterReply{Handle: handle}, nil
 		}
 		if handle > max_handle {
 			max_handle = handle
@@ -147,7 +147,7 @@ func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest)
 	self.storage.AddSubject(in.Observer) // should include this local observer into watch list
 	self.handles[max_handle] = &dt.ObserverModule{Module: in.Module, Observer: in.Observer}
 	du.LogD(stag, "received register request from (%s,%s), assigned handle %d", in.Module, in.Observer, max_handle)
-	return &pb.RegisterReply{max_handle}, nil
+	return &pb.RegisterReply{Handle: max_handle}, nil
 }
 
 func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
@@ -269,15 +269,15 @@ func (self *HealthGServer) GetObservedSubjects(ctx context.Context, in *pb.Empty
 		}
 		result[subject] = pts
 	}
-	return &pb.GetObservedSubjectsReply{result}, nil
+	return &pb.GetObservedSubjectsReply{Subjects: result}, nil
 }
 
 func (self *HealthGServer) DumpPanorama(ctx context.Context, in *pb.Empty) (*pb.DumpPanoramaReply, error) {
-	return &pb.DumpPanoramaReply{self.storage.DumpPanorama()}, nil
+	return &pb.DumpPanoramaReply{Panoramas: self.storage.DumpPanorama()}, nil
 }
 
 func (self *HealthGServer) DumpInference(ctx context.Context, in *pb.Empty) (*pb.DumpInferenceReply, error) {
-	return &pb.DumpInferenceReply{self.inference.DumpInference()}, nil
+	return &pb.DumpInferenceReply{Inferences: self.inference.DumpInference()}, nil
 }
 
 func (self *HealthGServer) Ping(ctx context.Context, in *pb.PingRequest) (*pb.PingReply, error) {
