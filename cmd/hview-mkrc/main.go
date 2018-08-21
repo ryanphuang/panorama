@@ -18,7 +18,6 @@ var (
 	localhost = flag.Bool("localhost", true, "whether all servers are localhost")
 	addressp  = flag.String("addressp", "", "pattern of server address, e.g., 10.10.2.%d")
 	namep     = flag.String("namep", "DHS_%d", "pattern of server name, e.g., DHS_%d")
-	namestart = flag.Int("namestart", 0, "start of server name id")
 	sidstart  = flag.Int("sidstart", 0, "start of the server id in server pattern")
 	portstart = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend   = flag.Int("port_end", 30000, "end of port range for a random port")
@@ -60,7 +59,7 @@ func main() {
 	rc := new(dt.HealthServerConfig)
 	rc.Peers = make(map[string]string)
 	for i := 0; i < *nserver; i++ {
-		eid := fmt.Sprintf(*namep, i + *namestart)
+		eid := fmt.Sprintf(*namep, i+s)
 		if len(*addressp) > 0 {
 			rc.Peers[eid] = fmt.Sprintf(*addressp+":%d", s, p)
 		} else {
