@@ -286,6 +286,13 @@ public class DHClient
     tracker.clear(subject, name, id, score, true);
   }
 
+  public void reqClearFail(String subject, String name, String id, float score)
+  {
+    if (!ready)
+      return;
+    tracker.clearFail(subject, name, id, score, true);
+  }
+
   public void inform(String subject, String name, Health.Status status, float score, boolean resolve)
   {
     if (!ready)

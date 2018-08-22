@@ -93,6 +93,13 @@ public class DHPendingTracker {
     pendingRequests.put(reqId, req);
   }
 
+  public void clearFail(String subject, String name, String reqId, float score, boolean resolve) {
+    if (pendingRequests.remove(reqId) == null) {
+      // It's no longer pending and we know for sure this is unhealthy
+      processor.add(subject, name, Status.UNHEALTHY, score, resolve, true);
+    }
+  }
+
   public void clear(String subject, String name, String reqId, float score, boolean resolve) {
     if (pendingRequests.remove(reqId) == null) {
       // It's likely that the pending request has been expired and reported to DH 
