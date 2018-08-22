@@ -23,25 +23,25 @@ func TestInferPending(t *testing.T) {
 	observer := "FE_2"
 
 	metrics1 := metrics_t{
-		"request.100": &pb.Value{pb.Status_PENDING, 40},
-		"request.103": &pb.Value{pb.Status_HEALTHY, 60},
-		"request.105": &pb.Value{pb.Status_HEALTHY, 80},
-		"request.106": &pb.Value{pb.Status_PENDING, 40},
+    "request.100": &pb.Value{Status: pb.Status_PENDING, Score: 40},
+    "request.103": &pb.Value{Status: pb.Status_HEALTHY, Score: 60},
+    "request.105": &pb.Value{Status: pb.Status_HEALTHY, Score: 80},
+    "request.106": &pb.Value{Status: pb.Status_PENDING, Score: 40},
 	}
 
 	metrics2 := metrics_t{
-		"request.105": &pb.Value{pb.Status_PENDING, 40},
-		"request.103": &pb.Value{pb.Status_PENDING, 30},
+    "request.105": &pb.Value{Status: pb.Status_PENDING, Score: 40},
+    "request.103": &pb.Value{Status: pb.Status_PENDING, Score: 30},
 	}
 
 	metrics3 := metrics_t{
-		"request.105": &pb.Value{pb.Status_PENDING, 20},
-		"request.103": &pb.Value{pb.Status_PENDING, 40},
+    "request.105": &pb.Value{Status: pb.Status_PENDING, Score: 20},
+    "request.103": &pb.Value{Status: pb.Status_PENDING, Score: 40},
 	}
 
 	metrics4 := metrics_t{
-		"request.105": &pb.Value{pb.Status_PENDING, 30},
-		"request.103": &pb.Value{pb.Status_HEALTHY, 80},
+    "request.105": &pb.Value{Status: pb.Status_PENDING, Score: 30},
+    "request.103": &pb.Value{Status: pb.Status_HEALTHY, Score: 80},
 	}
 
 	var err error
@@ -104,53 +104,53 @@ func TestInfer(t *testing.T) {
 			"FE_2",
 			subject,
 			metrics_t{
-				"cpu": &pb.Value{pb.Status_HEALTHY, 100},
+        "cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 100},
 			},
 		},
 		{
 			"FE_1",
 			subject,
 			metrics_t{
-				"mem": &pb.Value{pb.Status_UNHEALTHY, 30},
-				"cpu": &pb.Value{pb.Status_UNHEALTHY, 60},
+        "mem": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+        "cpu": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 60},
 			},
 		},
 		{
 			"FE_2",
 			subject,
 			metrics_t{
-				"cpu": &pb.Value{pb.Status_HEALTHY, 70},
+        "cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 70},
 			},
 		},
 		{
 			"FE_4",
 			subject,
 			metrics_t{
-				"mem":     &pb.Value{pb.Status_HEALTHY, 60},
-				"network": &pb.Value{pb.Status_HEALTHY, 70},
-				"cpu":     &pb.Value{pb.Status_HEALTHY, 80},
+        "mem":     &pb.Value{Status: pb.Status_HEALTHY, Score: 60},
+        "network": &pb.Value{Status: pb.Status_HEALTHY, Score: 70},
+        "cpu":     &pb.Value{Status: pb.Status_HEALTHY, Score: 80},
 			},
 		},
 		{
 			"FE_2",
 			subject,
 			metrics_t{
-				"cpu": &pb.Value{pb.Status_HEALTHY, 70},
+        "cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 70},
 			},
 		},
 		{
 			"FE_4",
 			subject,
 			metrics_t{
-				"network": &pb.Value{pb.Status_HEALTHY, 60},
-				"cpu":     &pb.Value{pb.Status_UNHEALTHY, 20},
+        "network": &pb.Value{Status: pb.Status_HEALTHY, Score: 60},
+        "cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 20},
 			},
 		},
 		{
 			"FE_5",
 			subject,
 			metrics_t{
-				"snapshot": &pb.Value{pb.Status_DEAD, 0},
+        "snapshot": &pb.Value{Status: pb.Status_DEAD, Score: 0},
 			},
 		},
 	}
@@ -192,7 +192,7 @@ func TestInfer(t *testing.T) {
 		t.Fatalf("Should infer mem UNHEALTHY")
 	}
 
-	metrics := metrics_t{"sync": &pb.Value{pb.Status_HEALTHY, 80}}
+  metrics := metrics_t{"sync": &pb.Value{Status: pb.Status_HEALTHY, Score: 80}}
 	r := dt.NewReport("FE_2", subject, metrics)
 	result, err := raw.AddReport(r, false)
 	if err != nil || result != REPORT_ACCEPTED {
