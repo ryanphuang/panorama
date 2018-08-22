@@ -22,62 +22,75 @@ func TestInferPending(t *testing.T) {
 	subject := "TS_3"
 	observer := "FE_2"
 
+	metrics0 := metrics_t{
+    "remote_dispatch": &pb.Value{Status: pb.Status_PENDING, Score: 50},
+	}
+
 	metrics1 := metrics_t{
+    "remote_dispatch": &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+	}
+
+	metrics2 := metrics_t{
     "request.100": &pb.Value{Status: pb.Status_PENDING, Score: 40},
     "request.103": &pb.Value{Status: pb.Status_HEALTHY, Score: 60},
     "request.105": &pb.Value{Status: pb.Status_HEALTHY, Score: 80},
     "request.106": &pb.Value{Status: pb.Status_PENDING, Score: 40},
 	}
 
-	metrics2 := metrics_t{
+	metrics3 := metrics_t{
     "request.105": &pb.Value{Status: pb.Status_PENDING, Score: 40},
     "request.103": &pb.Value{Status: pb.Status_PENDING, Score: 30},
 	}
 
-	metrics3 := metrics_t{
+	metrics4 := metrics_t{
     "request.105": &pb.Value{Status: pb.Status_PENDING, Score: 20},
     "request.103": &pb.Value{Status: pb.Status_PENDING, Score: 40},
 	}
 
-	metrics4 := metrics_t{
+	metrics5 := metrics_t{
     "request.105": &pb.Value{Status: pb.Status_PENDING, Score: 30},
     "request.103": &pb.Value{Status: pb.Status_HEALTHY, Score: 80},
 	}
 
-	var err error
-
-	r := dt.NewReport(observer, subject, metrics1)
+	r := dt.NewReport(observer, subject, metrics0)
 	result, err := raw.AddReport(r, false)
 	if err != nil || result != REPORT_ACCEPTED {
 		t.Fatalf("Fail to add report %s", r)
 	}
+	r = dt.NewReport(observer, subject, metrics1)
+	raw.AddReport(r, false)
 	inference, err := infs.InferSubject(subject)
 	if err != nil {
 		t.Errorf("Fail to infer reports")
 	}
-	if inference.Subject != subject {
-		t.Fatalf("Get wrong inference")
-	}
-	metric, ok := inference.Observation.Metrics["request.100"]
+	metric, ok := inference.Observation.Metrics["remote_dispatch"]
 	if !ok {
 		t.Fatalf("Missing metric in inference")
 	}
+	if metric.Value.Status != pb.Status_HEALTHY {
+		t.Fatalf("Should infer remote_dispatch HEALTHY")
+	}
+	if metric.Value.Score != 90 {
+		t.Fatalf("remote_dispatch health score should be 90")
+	}
+
+	r = dt.NewReport(observer, subject, metrics2)
+	raw.AddReport(r, false)
+	inference, _ = infs.InferSubject(subject)
+	metric, _ = inference.Observation.Metrics["request.100"]
 	if metric.Value.Status != pb.Status_PENDING {
 		t.Fatalf("Should infer request.100 PENDING")
 	}
 	if metric.Value.Score != 40 {
 		t.Fatalf("request.100 health score should be 40")
 	}
-	r = dt.NewReport(observer, subject, metrics2)
-	raw.AddReport(r, false)
 	r = dt.NewReport(observer, subject, metrics3)
 	raw.AddReport(r, false)
 	r = dt.NewReport(observer, subject, metrics4)
-	result, err = raw.AddReport(r, false)
-	if err != nil || result != REPORT_ACCEPTED {
-		t.Fatalf("Fail to add report %s", r)
-	}
-	inference, err = infs.InferSubject(subject)
+	raw.AddReport(r, false)
+	r = dt.NewReport(observer, subject, metrics5)
+	raw.AddReport(r, false)
+	inference, _ = infs.InferSubject(subject)
 	metric, _ = inference.Observation.Metrics["request.103"]
 	if metric.Value.Status != pb.Status_HEALTHY {
 		t.Fatalf("Should infer request.103 HEALTHY")
