@@ -66,7 +66,7 @@ public class DHPendingTracker {
         DHPendingRequest req = entry.getValue();
         if (req.time + expirationInterval < currentTime) {
           pendingRequests.remove(reqId);
-          logger.info("Expiring PENDING request "+ reqId);
+          logger.info("Expire a PENDING report for <" + req.subject + "," + req.name + "," + reqId + ">");
           processor.process(new DHRequest(req.subject, req.name, 
                 Status.PENDING, req.score, req.resolve, false, req.time));
         }
@@ -89,11 +89,13 @@ public class DHPendingTracker {
 
   public void add(String subject, String name, String reqId, float score, boolean resolve) {
     long time = System.currentTimeMillis();
+    logger.info("Get a PENDING report for <" + subject + "," + name + "," + reqId + ">");
     DHPendingRequest req = new DHPendingRequest(subject, name, score, resolve, time);
     pendingRequests.put(reqId, req);
   }
 
   public void clearFail(String subject, String name, String reqId, float score, boolean resolve) {
+    logger.info("Get a PENDING fail report for <" + subject + "," + name + "," + reqId + ">");
     if (pendingRequests.remove(reqId) == null) {
       // It's no longer pending and we know for sure this is unhealthy
       processor.add(subject, name, Status.UNHEALTHY, score, resolve, true);
@@ -101,6 +103,7 @@ public class DHPendingTracker {
   }
 
   public void clear(String subject, String name, String reqId, float score, boolean resolve) {
+    logger.info("Get a PENDING clear report for <" + subject + "," + name + "," + reqId + ">");
     if (pendingRequests.remove(reqId) == null) {
       // It's likely that the pending request has been expired and reported to DH 
       // service. In this case, we should send a follow-up healthy report
