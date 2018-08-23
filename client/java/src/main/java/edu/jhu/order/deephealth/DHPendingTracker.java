@@ -96,18 +96,21 @@ public class DHPendingTracker {
 
   public void clearFail(String subject, String name, String reqId, float score, boolean resolve) {
     logger.info("Get a PENDING fail report for <" + subject + "," + name + "," + reqId + ">");
-    if (pendingRequests.remove(reqId) == null) {
-      // It's no longer pending and we know for sure this is unhealthy
-      processor.add(subject, name, Status.UNHEALTHY, score, resolve, true);
-    }
+    pendingRequests.remove(reqId);
+    // It's no longer pending and we know for sure this is unhealthy
+    processor.add(subject, name, Status.UNHEALTHY, score, resolve, true);
   }
 
   public void clear(String subject, String name, String reqId, float score, boolean resolve) {
     logger.info("Get a PENDING clear report for <" + subject + "," + name + "," + reqId + ">");
-    if (pendingRequests.remove(reqId) == null) {
-      // It's likely that the pending request has been expired and reported to DH 
-      // service. In this case, we should send a follow-up healthy report
-      processor.add(subject, name, Status.HEALTHY, score, resolve, true);
-    }
+    // Two scenarios:
+    // 1). pendingRequests.remove(reqId) returns null
+    //     It's likely that the pending report has been expired and reported to DH 
+    //     service. In this case, we should send a follow-up healthy report
+    // 2). pendingRequests.remove(reqId) returns not null
+    //     We are able to resolve the pending report before it expires and gets submitted.
+    //     It is still good to submit one single healthy report to inform others.
+    pendingRequests.remove(reqId);
+    processor.add(subject, name, Status.HEALTHY, score, resolve, true);
   }
 }
