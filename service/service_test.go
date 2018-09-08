@@ -35,9 +35,9 @@ var (
 
 func TestSubmitReport(t *testing.T) {
 	metrics := map[string]*pb.Value{
-		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-		"network": &pb.Value{pb.Status_HEALTHY, 95},
+		"cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+		"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+		"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	_, err := client.SubmitReport(context.Background(), &pb.SubmitReportRequest{Handle: handle, Report: report})
@@ -49,9 +49,9 @@ func TestSubmitReport(t *testing.T) {
 
 func BenchmarkSubmitReportAsync(b *testing.B) {
 	metrics := map[string]*pb.Value{
-		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-		"network": &pb.Value{pb.Status_HEALTHY, 95},
+		"cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+		"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+		"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	requestCh := make(chan *pb.Report)
@@ -79,9 +79,9 @@ func BenchmarkSubmitReportAsync(b *testing.B) {
 
 func BenchmarkSubmitReport(b *testing.B) {
 	metrics := map[string]*pb.Value{
-		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-		"network": &pb.Value{pb.Status_HEALTHY, 95},
+		"cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+		"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+		"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	for i := 0; i < b.N; i++ {
@@ -91,9 +91,9 @@ func BenchmarkSubmitReport(b *testing.B) {
 
 func BenchmarkGetInference(b *testing.B) {
 	metrics := map[string]*pb.Value{
-		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-		"network": &pb.Value{pb.Status_HEALTHY, 95},
+		"cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+		"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+		"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	for i := 0; i < b.N; i++ {
@@ -112,9 +112,9 @@ func BenchmarkLearn(b *testing.B) {
 		return
 	}
 	metrics := map[string]*pb.Value{
-		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-		"network": &pb.Value{pb.Status_HEALTHY, 95},
+		"cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+		"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+		"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	b.ResetTimer()
@@ -153,9 +153,9 @@ func BenchmarkPropagate(b *testing.B) {
 		clients[peer.Id] = pb.NewHealthServiceClient(conn)
 	}
 	metrics := map[string]*pb.Value{
-		"cpu":     &pb.Value{pb.Status_UNHEALTHY, 30},
-		"disk":    &pb.Value{pb.Status_HEALTHY, 90},
-		"network": &pb.Value{pb.Status_HEALTHY, 95},
+		"cpu":     &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30},
+		"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+		"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 95},
 	}
 	report := dt.NewReport("XFE_2", "TS_3", metrics)
 	b.ResetTimer()
