@@ -184,7 +184,7 @@ func (self *ExchangeProtocol) PropagateAll(request *pb.LearnReportRequest) error
 			}
 		}(peer, addr)
 	}
-	wg.Done()
+	wg.Wait()
 	du.LogI(etag, "propagated report to %d subjects in %s, ignored %d subjects", prop_subjects, prop_latency, ignore_subjects)
 	return ferr
 }
