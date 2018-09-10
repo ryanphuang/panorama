@@ -82,27 +82,75 @@ func (self *ExchangeProtocol) Subscribe(subject string) error {
 	report := &pb.Report{Observer: self.me.Id, Subject: subject}
 	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_SUBSCRIPTION, Source: self.me, Report: report}
 	du.LogI(etag, "subscribe to reports about for %s", report.Subject)
-	return self._propagate(request)
+	return self.PropagateAll(request)
 }
 
 func (self *ExchangeProtocol) Unsubscribe(subject string) error {
 	report := &pb.Report{Observer: self.me.Id, Subject: subject}
 	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_UNSUBSCRIPTION, Source: self.me, Report: report}
 	du.LogI(etag, "unsubscribe to reports about for %s", report.Subject)
-	return self._propagate(request)
+	return self.PropagateAll(request)
 }
 
 func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 	request := &pb.LearnReportRequest{Kind: pb.LearnReportRequest_NORMAL, Source: self.me, Report: report}
 	du.LogI(etag, "about to propagate report about %s", report.Subject)
-	return self._propagate(request)
+	return self.PropagateAll(request)
 }
 
-func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
+// Propagate something to a peer. This something could be a normal report or a
+// subscription/unsubscription request. In the former case, we should check
+// if the receiver peer is interested in knowing the report. If not, we
+// should stop propagating the report to the receiver in the future until
+// it becomes interested in the report again.
+func (self *ExchangeProtocol) PropagatePeer(peer string, addr string, ignoreset *IgnoreSet, request *pb.LearnReportRequest) (bool, error, time.Duration) {
+	if peer == self.Id {
+		du.LogI(etag, "skip propagating to self")
+		return true, nil, 0 // skip send to self
+	}
+	report := request.Report
+	if ignoreset != nil {
+		if ignoreset.Test(peer) {
+			du.LogI(etag, "skip propagating report about %s to %s", report.Subject, peer)
+			return true, nil, 0
+		}
+	}
+	du.LogI(etag, "propagating report about %s to %s", report.Subject, peer)
+	client, err := self.getOrMakeClient(peer)
+	if err != nil {
+		du.LogE(etag, "failed to get client for %s", peer)
+		return false, err, 0
+	}
+	t1 := time.Now()
+	reply, err := client.LearnReport(context.Background(), request)
+	duration := time.Since(t1)
+	if err != nil {
+		du.LogE(etag, "failed to propagate report about %s to %s", report.Subject, peer)
+		return false, err, duration
+	}
+	if request.Kind == pb.LearnReportRequest_NORMAL && reply.Result == pb.LearnReportReply_IGNORED {
+		if ignoreset == nil {
+			ignoreset = NewIgnoreSet()
+			self.mu.Lock()
+			self.SkipSubjectPeers[report.Subject] = ignoreset
+			self.mu.Unlock()
+		}
+		ignoreset.Set(peer)
+		du.LogI(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
+		return true, nil, duration
+	} else {
+		du.LogI(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
+		return false, nil, duration
+	}
+}
+
+func (self *ExchangeProtocol) PropagateAll(request *pb.LearnReportRequest) error {
 	var ferr error
-	var prop_latency time.Duration = 0
-	var prop_subjects = 0
-	var ignore_subjects = 0
+	var prop_latency time.Duration
+	var prop_subjects int
+	var ignore_subjects int
+	var wg sync.WaitGroup
+	var mu sync.Mutex // local mutex for updating stats in the parallelized loop
 
 	self.mu.RLock()
 	report := request.Report
@@ -112,48 +160,31 @@ func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 	}
 	self.mu.RUnlock()
 	du.LogD(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
+
+	wg.Add(len(self.Peers))
 	for peer, addr := range self.Peers {
-		if peer == self.Id {
-			du.LogI(etag, "skip propagating to self")
-			continue // skip send to self
-		}
-		if ignoreset != nil {
-			if ignoreset.Test(peer) {
-				du.LogI(etag, "skip propagating report about %s to %s", report.Subject, peer)
-				ignore_subjects++
-				continue
+		// TODO: the propagation should be made parallel...
+		go func(peer string, addr string) {
+			defer wg.Done()
+			ignored, err, duration := self.PropagatePeer(peer, addr, ignoreset, request)
+			if err != nil {
+				ferr = err
+			} else {
+				mu.Lock()
+				if ignored {
+					ignore_subjects++
+				} else {
+					prop_subjects++
+				}
+				// Count the duration into propagation latency even if the reply
+				// is ignored. Presumably, the next time, it won't even be tried (duration=0)
+				// This gives us a sense on how fast the propagation can converge
+				prop_latency += duration
+				mu.Unlock()
 			}
-		}
-		du.LogI(etag, "propagating report about %s to %s", report.Subject, peer)
-		client, err := self.getOrMakeClient(peer)
-		if err != nil {
-			du.LogE(etag, "failed to get client for %s", peer)
-			ferr = err
-			continue
-		}
-		t1 := time.Now()
-		reply, err := client.LearnReport(context.Background(), request)
-		prop_latency += time.Since(t1)
-		if err != nil {
-			du.LogE(etag, "failed to propagate report about %s to %s", report.Subject, peer)
-			ferr = err
-			continue
-		}
-		if request.Kind == pb.LearnReportRequest_NORMAL && reply.Result == pb.LearnReportReply_IGNORED {
-			if ignoreset == nil {
-				ignoreset = NewIgnoreSet()
-				self.mu.Lock()
-				self.SkipSubjectPeers[report.Subject] = ignoreset
-				self.mu.Unlock()
-			}
-			ignoreset.Set(peer)
-			du.LogI(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
-			ignore_subjects++
-		} else {
-			du.LogI(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
-			prop_subjects++
-		}
+		}(peer, addr)
 	}
+	wg.Done()
 	du.LogI(etag, "propagated report to %d subjects in %s, ignored %d subjects", prop_subjects, prop_latency, ignore_subjects)
 	return ferr
 }
