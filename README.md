@@ -166,3 +166,8 @@ $ hview-client -server pano0:6688 dump inference
 [peer@9] ==> peer@9: 2017-05-21T08:00:39.365718626Z { SyncThread: UNHEALTHY, 20.0; }
 ```
 
+## TODO
+
+- [x] Parallelize report propagation
+- [ ] Make multicast more efficient
+- [ ] Re-initialize state from report db after restart
