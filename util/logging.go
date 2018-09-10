@@ -39,6 +39,7 @@ var logger *Logger = NewLogger(InfoLevel, os.Stdout, "DeepHealth:")
 
 const (
 	LogTimeFormat = "2006-01-02 15:04:05.000000"
+	LogFuncName   = false
 )
 
 func SetLogLevel(level LogLevel) {
@@ -65,40 +66,60 @@ func SetLogLevelString(level string) {
 
 func LogD(tag string, format string, a ...interface{}) {
 	if logger.Level >= DebugLevel {
-		pc, fn, _, _ := runtime.Caller(1)
+		var prefix string
+		pc, fn, line, _ := runtime.Caller(1)
 		srcName := filepath.Base(fn)
-		funcName := runtime.FuncForPC(pc).Name()
-		prefix := fmt.Sprintf("%s DEBUG  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		if LogFuncName {
+			funcName := runtime.FuncForPC(pc).Name()
+			prefix = fmt.Sprintf("%s DEBUG  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		} else {
+			prefix = fmt.Sprintf("%s DEBUG  [%s] %s.%d: ", time.Now().Format(LogTimeFormat), tag, srcName, line)
+		}
 		fmt.Fprintf(logger.Out, prefix+format+"\n", a...)
 	}
 }
 
 func LogI(tag string, format string, a ...interface{}) {
 	if logger.Level >= InfoLevel {
-		pc, fn, _, _ := runtime.Caller(1)
+		var prefix string
+		pc, fn, line, _ := runtime.Caller(1)
 		srcName := filepath.Base(fn)
-		funcName := runtime.FuncForPC(pc).Name()
-		prefix := fmt.Sprintf("%s INFO  [%s]  %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		if LogFuncName {
+			funcName := runtime.FuncForPC(pc).Name()
+			prefix = fmt.Sprintf("%s INFO  [%s]  %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		} else {
+			prefix = fmt.Sprintf("%s INFO  [%s]  %s.%d: ", time.Now().Format(LogTimeFormat), tag, srcName, line)
+		}
 		fmt.Fprintf(logger.Out, prefix+format+"\n", a...)
 	}
 }
 
 func LogE(tag string, format string, a ...interface{}) {
 	if logger.Level >= ErrorLevel {
-		pc, fn, _, _ := runtime.Caller(1)
+		var prefix string
+		pc, fn, line, _ := runtime.Caller(1)
 		srcName := filepath.Base(fn)
-		funcName := runtime.FuncForPC(pc).Name()
-		prefix := fmt.Sprintf("%s ERROR  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		if LogFuncName {
+			funcName := runtime.FuncForPC(pc).Name()
+			prefix = fmt.Sprintf("%s ERROR  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		} else {
+			prefix = fmt.Sprintf("%s ERROR  [%s] %s.%d: ", time.Now().Format(LogTimeFormat), tag, srcName, line)
+		}
 		fmt.Fprintf(logger.Out, prefix+format+"\n", a...)
 	}
 }
 
 func LogF(tag string, format string, a ...interface{}) {
 	if logger.Level >= FatalLevel {
-		pc, fn, _, _ := runtime.Caller(1)
+		var prefix string
+		pc, fn, line, _ := runtime.Caller(1)
 		srcName := filepath.Base(fn)
-		funcName := runtime.FuncForPC(pc).Name()
-		prefix := fmt.Sprintf("%s FATAL  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		if LogFuncName {
+			funcName := runtime.FuncForPC(pc).Name()
+			prefix = fmt.Sprintf("%s FATAL  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		} else {
+			prefix = fmt.Sprintf("%s FATAL  [%s] %s.%d: ", time.Now().Format(LogTimeFormat), tag, srcName, line)
+		}
 		fmt.Fprintf(logger.Out, prefix+format+"\n", a...)
 		os.Exit(1)
 	}
@@ -106,10 +127,15 @@ func LogF(tag string, format string, a ...interface{}) {
 
 func LogP(tag string, format string, a ...interface{}) {
 	if logger.Level >= PanicLevel {
-		pc, fn, _, _ := runtime.Caller(1)
+		var prefix string
+		pc, fn, line, _ := runtime.Caller(1)
 		srcName := filepath.Base(fn)
-		funcName := runtime.FuncForPC(pc).Name()
-		prefix := fmt.Sprintf("%s PANIC  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		if LogFuncName {
+			funcName := runtime.FuncForPC(pc).Name()
+			prefix = fmt.Sprintf("%s PANIC  [%s] %s:%s: ", time.Now().Format(LogTimeFormat), tag, srcName, funcName)
+		} else {
+			prefix = fmt.Sprintf("%s PANIC  [%s] %s.%d: ", time.Now().Format(LogTimeFormat), tag, srcName, line)
+		}
 		fmt.Fprintf(logger.Out, prefix+format+"\n", a...)
 		panic(fmt.Sprintf(format, a...))
 	}
