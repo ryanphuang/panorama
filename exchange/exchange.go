@@ -100,6 +100,10 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 
 func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 	var ferr error
+	var prop_latency time.Duration = 0
+	var prop_subjects = 0
+	var ignore_subjects = 0
+
 	self.mu.RLock()
 	report := request.Report
 	ignoreset, ok := self.SkipSubjectPeers[report.Subject]
@@ -116,6 +120,7 @@ func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 		if ignoreset != nil {
 			if ignoreset.Test(peer) {
 				du.LogI(etag, "skip propagating report about %s to %s", report.Subject, peer)
+				ignore_subjects++
 				continue
 			}
 		}
@@ -126,7 +131,9 @@ func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 			ferr = err
 			continue
 		}
+		t1 := time.Now()
 		reply, err := client.LearnReport(context.Background(), request)
+		prop_latency += time.Since(t1)
 		if err != nil {
 			du.LogE(etag, "failed to propagate report about %s to %s", report.Subject, peer)
 			ferr = err
@@ -141,10 +148,13 @@ func (self *ExchangeProtocol) _propagate(request *pb.LearnReportRequest) error {
 			}
 			ignoreset.Set(peer)
 			du.LogI(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
+			ignore_subjects++
 		} else {
 			du.LogI(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
+			prop_subjects++
 		}
 	}
+	du.LogI(etag, "propagated report to %d subjects in %s, ignored %d subjects", prop_subjects, prop_latency, ignore_subjects)
 	return ferr
 }
 
