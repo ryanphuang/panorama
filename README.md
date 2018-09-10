@@ -8,12 +8,7 @@ You can download the Go distribution from the [official website](https://golang.
 In addition, the RPC layer of Panorama is built on top of [gRPC](https://grpc.io) 
 and [Protocol Buffers](https://developers.google.com/protocol-buffers). You 
 can get the protobuf for Go with `go get -u github.com/golang/protobuf/protoc-gen-go`.
-This will install the protobuf compiler at `$GOPATH/bin`. **Note**: The recent 
-Go protoc3 introduces [changes](https://groups.google.com/forum/#!topic/protobuf/N-elvFu4dFM) 
-that will generate additional fields such as `XXX_NoUnkeyedLiteral` in 
-the protobuf messages, which may cause side effects when using the message 
-in map keys or `==` test. We haven't double checked Panorama's code to 
-eliminate such side effects yet.
+This will install the protobuf compiler at `$GOPATH/bin`.
 
 ### Installation
 Clone the source tree of Panorama to your `$GOPATH/src`, then make it:
