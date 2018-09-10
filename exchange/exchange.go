@@ -139,7 +139,7 @@ func (self *ExchangeProtocol) PropagatePeer(peer string, addr string, ignoreset 
 		du.LogI(etag, "stop propgating report on subject %s to %s in the future", report.Subject, peer)
 		return true, nil, duration
 	} else {
-		du.LogI(etag, "propagated report about %s to %s at %s", report.Subject, peer, addr)
+		du.LogI(etag, "propagated report about %s to %s at %s in %s", report.Subject, peer, addr, duration)
 		return false, nil, duration
 	}
 }
