@@ -146,7 +146,7 @@ func (self *ExchangeProtocol) PropagatePeer(peer string, addr string, ignoreset 
 
 func (self *ExchangeProtocol) PropagateAll(request *pb.LearnReportRequest) error {
 	var ferr error
-	var prop_latency time.Duration
+	var serial_prop_latency time.Duration
 	var prop_subjects int
 	var ignore_subjects int
 	var wg sync.WaitGroup
@@ -162,8 +162,9 @@ func (self *ExchangeProtocol) PropagateAll(request *pb.LearnReportRequest) error
 	du.LogD(etag, "ignoreset about %s: %v", report.Subject, ignoreset)
 
 	wg.Add(len(self.Peers))
+	t1 := time.Now()
 	for peer, addr := range self.Peers {
-		// TODO: the propagation should be made parallel...
+		// The propagation is now parallelized, blazing fast...
 		go func(peer string, addr string) {
 			defer wg.Done()
 			ignored, err, duration := self.PropagatePeer(peer, addr, ignoreset, request)
@@ -179,13 +180,15 @@ func (self *ExchangeProtocol) PropagateAll(request *pb.LearnReportRequest) error
 				// Count the duration into propagation latency even if the reply
 				// is ignored. Presumably, the next time, it won't even be tried (duration=0)
 				// This gives us a sense on how fast the propagation can converge
-				prop_latency += duration
+				serial_prop_latency += duration
 				mu.Unlock()
 			}
 		}(peer, addr)
 	}
 	wg.Wait()
-	du.LogI(etag, "propagated report to %d subjects in %s, ignored %d subjects", prop_subjects, prop_latency, ignore_subjects)
+	parallel_prop_latency := time.Since(t1)
+	du.LogI(etag, "propagated report to %d subjects in %s (serial latency %s), ignored %d subjects",
+		prop_subjects, parallel_prop_latency, serial_prop_latency, ignore_subjects)
 	return ferr
 }
 
