@@ -105,7 +105,7 @@ func (self *ExchangeProtocol) Propagate(report *pb.Report) error {
 // it becomes interested in the report again.
 func (self *ExchangeProtocol) PropagatePeer(peer string, addr string, ignoreset *IgnoreSet, request *pb.LearnReportRequest) (bool, error, time.Duration) {
 	if peer == self.Id {
-		du.LogI(etag, "skip propagating to self")
+		du.LogD(etag, "skip propagating to self")
 		return true, nil, 0 // skip send to self
 	}
 	report := request.Report
@@ -115,7 +115,7 @@ func (self *ExchangeProtocol) PropagatePeer(peer string, addr string, ignoreset 
 			return true, nil, 0
 		}
 	}
-	du.LogI(etag, "propagating report about %s to %s", report.Subject, peer)
+	du.LogD(etag, "propagating report about %s to %s", report.Subject, peer)
 	client, err := self.getOrMakeClient(peer)
 	if err != nil {
 		du.LogE(etag, "failed to get client for %s", peer)
