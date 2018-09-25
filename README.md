@@ -25,7 +25,7 @@ Panorama also comes with a thin Java client wrapper library. To get the
 Java client library, type `make java`. The library will be generated
 in `client/java/target/dh-client-1.0-SNAPSHOT-jar-with-dependencies.jar`.
 
-## Generate deep health server config
+## Generate Panorama service config
 
 `$ hview-mkrc -fix_port 6688 -nserver 10 -addressp razor%d -namep pano%d -id pano0 -filter -subjects nn1,dn1,dn2,dn3`
 will make a Panorama service config that consists of 10 Panorama instances `pano[0-9]`, each listening
