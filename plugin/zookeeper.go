@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	dt "deephealth/types"
-	du "deephealth/util"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 type ZooKeeperPlugin struct {

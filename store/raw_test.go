@@ -6,16 +6,16 @@ import (
 	"testing"
 	"time"
 
-	pb "deephealth/build/gen"
+	pb "panorama/build/gen"
 
-	dt "deephealth/types"
-	du "deephealth/util"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 func TestAddSubject(t *testing.T) {
 	du.SetLogLevel(du.InfoLevel)
 	store := NewRawHealthStorage("TS_1", "TS_2")
-  metrics := map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 100}}
+	metrics := map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 100}}
 	report := dt.NewReport("FE_2", "TS_3", metrics)
 	result, err := store.AddReport(report, true)
 	if err != nil {
@@ -47,10 +47,10 @@ func TestAddReport(t *testing.T) {
 	for i := 0; i < 20; i++ {
 		t.Logf("Making observation %d", i)
 		metrics := map[string]*pb.Value{
-      "cpu":     &pb.Value{Status: pb.Status_HEALTHY, Score: 100},
-      "disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
-      "network": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 10},
-      "memory":  &pb.Value{Status: pb.Status_MAYBE_UNHEALTHY, Score: 30},
+			"cpu":     &pb.Value{Status: pb.Status_HEALTHY, Score: 100},
+			"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+			"network": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 10},
+			"memory":  &pb.Value{Status: pb.Status_MAYBE_UNHEALTHY, Score: 30},
 		}
 		observer := fmt.Sprintf("FE_%d", i)
 		subject := fmt.Sprintf("TS_%d", i%3)
@@ -88,16 +88,16 @@ func TestRecentReport(t *testing.T) {
 	du.SetLogLevel(du.InfoLevel)
 	store := NewRawHealthStorage("TS_1", "TS_2")
 
-  metrics := map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 100}}
+	metrics := map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 100}}
 	report := dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
-  metrics = map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 90}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 90}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
-  metrics = map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 70}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_HEALTHY, Score: 70}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
-  metrics = map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30}}
+	metrics = map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 30}}
 	report = dt.NewReport("FE_2", "TS_1", metrics)
 	store.AddReport(report, true)
 
@@ -114,7 +114,7 @@ func TestRecentReport(t *testing.T) {
 	}
 
 	time.Sleep(200 * time.Millisecond)
-  metrics = map[string]*pb.Value{"memory": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 20}}
+	metrics = map[string]*pb.Value{"memory": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 20}}
 	report = dt.NewReport("FE_4", "TS_1", metrics)
 	store.AddReport(report, true)
 	ret = store.GetLatestReport("TS_1")
@@ -130,10 +130,10 @@ func TestRecentReport(t *testing.T) {
 	}
 
 	time.Sleep(200 * time.Millisecond)
-  metrics = map[string]*pb.Value{"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 80}}
+	metrics = map[string]*pb.Value{"network": &pb.Value{Status: pb.Status_HEALTHY, Score: 80}}
 	report = dt.NewReport("FE_5", "TS_1", metrics)
 	store.AddReport(report, true)
-  metrics = map[string]*pb.Value{"memory": &pb.Value{Status: pb.Status_HEALTHY, Score: 70}}
+	metrics = map[string]*pb.Value{"memory": &pb.Value{Status: pb.Status_HEALTHY, Score: 70}}
 	report = dt.NewReport("FE_1", "TS_1", metrics)
 	store.AddReport(report, true)
 	ret = store.GetLatestReport("TS_1")
@@ -154,7 +154,7 @@ func TestTruncate(t *testing.T) {
 	store := NewRawHealthStorage("TS_1", "TS_2")
 
 	for i := 0; i < 20; i++ {
-    metrics := map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_UNHEALTHY, Score: float32(i)}}
+		metrics := map[string]*pb.Value{"cpu": &pb.Value{Status: pb.Status_UNHEALTHY, Score: float32(i)}}
 		report := dt.NewReport("FE_2", "TS_1", metrics)
 		store.AddReport(report, false)
 	}
@@ -188,10 +188,10 @@ func addReports(store *RawHealthStorage, start int, end int, t *testing.T) {
 	for i := start; i < end; i++ {
 		t.Logf("Making observation %d", i)
 		metrics := map[string]*pb.Value{
-      "cpu":     &pb.Value{Status: pb.Status_HEALTHY, Score: 100},
-      "disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
-      "network": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 10},
-      "memory":  &pb.Value{Status: pb.Status_MAYBE_UNHEALTHY, Score: 30},
+			"cpu":     &pb.Value{Status: pb.Status_HEALTHY, Score: 100},
+			"disk":    &pb.Value{Status: pb.Status_HEALTHY, Score: 90},
+			"network": &pb.Value{Status: pb.Status_UNHEALTHY, Score: 10},
+			"memory":  &pb.Value{Status: pb.Status_MAYBE_UNHEALTHY, Score: 30},
 		}
 		observer := fmt.Sprintf("FE_1")
 		subject := fmt.Sprintf("TS_2")

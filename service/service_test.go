@@ -13,9 +13,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "deephealth/build/gen"
-	dt "deephealth/types"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 const (
@@ -120,10 +120,10 @@ func BenchmarkLearn(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		request := &pb.LearnReportRequest{Source: myid, Report: report}
-	  _, err := client.LearnReport(context.Background(), request)
-	  if err != nil {
-		  fmt.Errorf("failed to propagate report about %s to %s\n", report.Subject, myid)
-	  }
+		_, err := client.LearnReport(context.Background(), request)
+		if err != nil {
+			fmt.Errorf("failed to propagate report about %s to %s\n", report.Subject, myid)
+		}
 	}
 }
 

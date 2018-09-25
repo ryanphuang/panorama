@@ -3,7 +3,7 @@ package types
 import (
 	"time"
 
-	pb "deephealth/build/gen"
+	pb "panorama/build/gen"
 )
 
 type Event struct {

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	pb "deephealth/build/gen"
+	pb "panorama/build/gen"
 )
 
 // Simple tuple about the local observer

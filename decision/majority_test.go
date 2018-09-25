@@ -5,5 +5,6 @@ import (
 )
 
 func TestInferPano(t *testing.T) {
-	var majority SimpleMajorityInference
+	// The test is now done in store/inference_test.go
+	// TODO: move the test here
 }

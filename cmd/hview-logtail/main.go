@@ -11,9 +11,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "deephealth/build/gen"
-	dp "deephealth/plugin"
-	dt "deephealth/types"
+	pb "panorama/build/gen"
+	dp "panorama/plugin"
+	dt "panorama/types"
 )
 
 var (

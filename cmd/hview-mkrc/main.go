@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	dt "deephealth/types"
-	du "deephealth/util"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 var (
@@ -60,7 +60,7 @@ func main() {
 	rc := new(dt.HealthServerConfig)
 	rc.Peers = make(map[string]string)
 	for i := 0; i < *nserver; i++ {
-		eid := fmt.Sprintf(*namep, i + *namestart)
+		eid := fmt.Sprintf(*namep, i+*namestart)
 		if len(*addressp) > 0 {
 			rc.Peers[eid] = fmt.Sprintf(*addressp+":%d", s, p)
 		} else {

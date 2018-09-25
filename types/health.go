@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	pb "deephealth/build/gen"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
+	pb "panorama/build/gen"
 )
 
 type ConcurrentPanorama struct {

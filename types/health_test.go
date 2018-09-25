@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	pb "deephealth/build/gen"
+	pb "panorama/build/gen"
 )
 
 func TestNewObservation(t *testing.T) {

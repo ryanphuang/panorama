@@ -9,9 +9,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	pb "deephealth/build/gen"
-	dt "deephealth/types"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 const (

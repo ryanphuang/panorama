@@ -1,7 +1,7 @@
 package decision
 
 import (
-	pb "deephealth/build/gen"
+	pb "panorama/build/gen"
 )
 
 type InferenceAlgo interface {

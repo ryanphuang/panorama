@@ -3,7 +3,7 @@ package plugin
 import (
 	"flag"
 
-	dt "deephealth/types"
+	dt "panorama/types"
 )
 
 type LogTailPlugin interface {

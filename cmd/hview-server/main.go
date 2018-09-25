@@ -13,9 +13,9 @@ import (
 	"syscall"
 	"time"
 
-	"deephealth/service"
-	dt "deephealth/types"
-	du "deephealth/util"
+	"panorama/service"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 var (

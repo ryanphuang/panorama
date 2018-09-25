@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	du "deephealth/util"
+	du "panorama/util"
 )
 
 const (

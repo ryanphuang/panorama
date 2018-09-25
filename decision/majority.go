@@ -3,9 +3,9 @@ package decision
 import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 
-	pb "deephealth/build/gen"
-	dt "deephealth/types"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 type SimpleMajorityInference struct {
@@ -100,7 +100,7 @@ func (self SimpleMajorityInference) InferPano(panorama *pb.Panorama, workbook ma
 }
 
 func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
-  du.LogD(mtag, "inferring %d observations from %s", len(view.Observations), view.Observer)
+	du.LogD(mtag, "inferring %d observations from %s", len(view.Observations), view.Observer)
 	i := len(view.Observations) - 1
 	if i < 0 {
 		return nil
@@ -114,7 +114,7 @@ func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
 	aggs := make(map[string]*aggCnt)
 	for ; i >= 0; i-- {
 		val := view.Observations[i]
-    du.LogD(mtag, "[%s] observation %d: %s", view.Observer, i, dt.ObservationString(val))
+		du.LogD(mtag, "[%s] observation %d: %s", view.Observer, i, dt.ObservationString(val))
 		for name, metric := range val.Metrics {
 			// fmt.Printf("time %v, name %s, metric %v\n", val.Ts, name, metric)
 			agg, ok := aggs[name]
@@ -123,22 +123,22 @@ func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
 				aggs[name] = agg
 			}
 			if agg.stop || agg.cnt >= VIEW_METRIC_HISTORY_SIZE {
-        du.LogD(mtag, "[%s] observation %d: stop aggregating metric %s", view.Observer, i, name)
+				du.LogD(mtag, "[%s] observation %d: stop aggregating metric %s", view.Observer, i, name)
 				// don't aggregate this metric any more
 				continue
 			}
 			if !ok {
 				metrics[name] = metric
 				agg.cnt = agg.cnt + 1
-        du.LogD(mtag, "[%s] observation %d: new metric %s", view.Observer, i, name)
+				du.LogD(mtag, "[%s] observation %d: new metric %s", view.Observer, i, name)
 			} else {
 				m1 := metrics[name]
-        du.LogD(mtag, "[%s] observation %d: previous metric for %s: %v", view.Observer, i, name, m1)
+				du.LogD(mtag, "[%s] observation %d: previous metric for %s: %v", view.Observer, i, name, m1)
 				if metric.Value.Status == pb.Status_PENDING && m1.Value.Status == pb.Status_HEALTHY {
 					// if the current status is healthy and the older status is pending,
 					// then the two statuses get merged to healthy because the pending status
 					// is only a temporary status
-          du.LogI(mtag, "[%s] observation %d: resolved a pending status for metric %s", view.Observer, i, name)
+					du.LogI(mtag, "[%s] observation %d: resolved a pending status for metric %s", view.Observer, i, name)
 
 					// here, we don't increment agg cnt, which means that we will keep resolving
 					// TODO: it may be necessary to set a limit on the resolving
@@ -147,12 +147,12 @@ func (self SimpleMajorityInference) InferView(view *pb.View) *pb.Inference {
 					// if the two metrics have different statuses
 					// the recent one always override the old one.
 					// the look back stops.
-          du.LogI(mtag, "[%s] observation %d: metric %s from a previous observation has a different status: now %s, previous %s", 
-              view.Observer, i, name, metric.Value.Status.String(), m1.Value.Status.String())
+					du.LogI(mtag, "[%s] observation %d: metric %s from a previous observation has a different status: now %s, previous %s",
+						view.Observer, i, name, metric.Value.Status.String(), m1.Value.Status.String())
 					agg.stop = true
 					continue
 				} else {
-          du.LogD(mtag, "[%s] observation %d: aggregating metric %s of %s status with score %.1f", view.Observer, i, name, metric.Value.Status.String(), metric.Value.Score)
+					du.LogD(mtag, "[%s] observation %d: aggregating metric %s of %s status with score %.1f", view.Observer, i, name, metric.Value.Status.String(), metric.Value.Score)
 					m1.Value.Score += metric.Value.Score
 					agg.cnt = agg.cnt + 1
 				}

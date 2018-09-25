@@ -11,12 +11,12 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	pb "deephealth/build/gen"
-	"deephealth/decision"
-	"deephealth/exchange"
-	"deephealth/store"
-	dt "deephealth/types"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	"panorama/decision"
+	"panorama/exchange"
+	"panorama/store"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 const (

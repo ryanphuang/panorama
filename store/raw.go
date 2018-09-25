@@ -6,9 +6,9 @@ import (
 	"sync"
 	"time"
 
-	pb "deephealth/build/gen"
-	dt "deephealth/types"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	dt "panorama/types"
+	du "panorama/util"
 
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"

@@ -9,9 +9,9 @@ import (
 	"database/sql"
 	_ "github.com/mattn/go-sqlite3"
 
-	pb "deephealth/build/gen"
-	dt "deephealth/types"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	dt "panorama/types"
+	du "panorama/util"
 )
 
 const (

@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"strings"
 
-	pb "deephealth/build/gen"
-	du "deephealth/util"
+	pb "panorama/build/gen"
+	du "panorama/util"
 )
 
 type FieldFilter func(fields map[string]string) (map[string]string, bool)

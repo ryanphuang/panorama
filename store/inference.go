@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"sync"
 
-	dd "deephealth/decision"
-	dt "deephealth/types"
-	du "deephealth/util"
+	dd "panorama/decision"
+	dt "panorama/types"
+	du "panorama/util"
 
-	pb "deephealth/build/gen"
+	pb "panorama/build/gen"
 )
 
 const (
