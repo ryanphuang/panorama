@@ -175,5 +175,4 @@ $ hview-client dump inference
 ## TODO
 
 - [x] Parallelize report propagation
-- [ ] Make multicast more efficient
 - [ ] Re-initialize state from report db after restart
