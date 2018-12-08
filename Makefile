@@ -1,4 +1,4 @@
-.PHONY: all build idl get java
+.PHONY: all build gen get tool-deps get-dep get-protoc dep-check clean java
 
 idls := idl/health.proto idl/service.proto
 
@@ -7,7 +7,7 @@ all: install
 install: build
 	go install $$(go list ./... | grep -v /vendor/)
 
-build:
+build: gen
 	go build ./...
 
 get:
