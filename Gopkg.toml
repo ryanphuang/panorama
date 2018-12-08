@@ -1,0 +1,33 @@
+required = [
+  "github.com/golang/protobuf/protoc-gen-go",
+]
+
+[[constraint]]
+  name = "github.com/golang/protobuf"
+  version = "~1.2.0"
+
+[[constraint]]
+  branch = "master"
+  name = "github.com/hpcloud/tail"
+
+[[constraint]]
+  name = "github.com/mattn/go-sqlite3"
+  version = "1.10.0"
+
+[[constraint]]
+  revision = "f04abc6bdfa7a0171a8a0c9fd2ada9391044d056"
+  name = "golang.org/x/net"
+
+[[constraint]]
+  name = "google.golang.org/grpc"
+  version = "~1.15.0"
+
+[prune]
+  go-tests = true
+  unused-packages = true
+  non-go = true
+
+    [[prune.project]]
+      name = "github.com/golang/protobuf"
+      unused-packages = false
+      non-go = false
