@@ -6,11 +6,15 @@ This is the repository for the Panorama system described in our [OSDI '18](https
 ### Requirements
 Panorama is written in Go. To use it, you must have the Go compiler installed.
 You can download the Go distribution from the [official website](https://golang.org/).
+The code is tested with Go 1.8.
 
 In addition, the RPC layer of Panorama is built on top of [gRPC](https://grpc.io)
-and [Protocol Buffers](https://developers.google.com/protocol-buffers). You
-can get the protobuf for Go with `go get -u github.com/golang/protobuf/protoc-gen-go`.
-This will install the protobuf compiler at `$GOPATH/bin`.
+and [Protocol Buffers](https://developers.google.com/protocol-buffers). A protobuf 
+[compiler](https://github.com/protocolbuffers/protobuf/releases) is required. 
+We have tested with `protoc` version 3.5.1 but recent versions should also work.
+To parse the Panorama service definitions, the protobuf Go plugin `protoc-gen-go`
+is also needed. We recommend to get the version [1.2.0](https://github.com/golang/protobuf/tree/v1.2.0), 
+which supports Go 1.8. Both `protoc` and `protoc-gen-go` should be in the PATH.
 
 ### Download & Installation
 Easiest way is to use `go get -u github.com/ryanphuang/panorama`. You can also
@@ -19,6 +23,14 @@ manually clone the repo to your `$GOPATH/src` and then build it with:
 $ cd panorama
 $ make
 ```
+
+If you don't have the protobuf Go plugin, the Makefile provides a target to 
+install it:
+```
+$ make tool-deps
+```
+Note that it will also install [dep](https://github.com/golang/dep) for 
+dependency management.
 
 Afterwards, you will find `hview-server`, `hview-client` in `$GOPATH/bin`.
 Panorama also comes with a thin Java client wrapper library. To get the 
