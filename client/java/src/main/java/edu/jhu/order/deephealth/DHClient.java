@@ -4,7 +4,11 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
+import io.grpc.Status;
 import com.google.protobuf.Message;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,18 +19,22 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.logging.ConsoleHandler;
 import java.util.logging.LogManager;
 import java.util.logging.LogRecord;
 import java.util.logging.Logger;
 import java.util.logging.SimpleFormatter;
 
+import edu.jhu.order.deephealth.Health;
 import edu.jhu.order.deephealth.Health.Observation;
 import edu.jhu.order.deephealth.Health.Report;
-import edu.jhu.order.deephealth.Health.Status;
 import edu.jhu.order.deephealth.DHBuffer.AggregateValue;
 import edu.jhu.order.deephealth.Health.Metric;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceBlockingStub;
+import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceFutureStub;
 import edu.jhu.order.deephealth.HealthServiceGrpc.HealthServiceStub;
 import edu.jhu.order.deephealth.Service.GetReportRequest;
 import edu.jhu.order.deephealth.Service.ObserveReply;
@@ -75,6 +83,8 @@ public class DHClient
   private ManagedChannel channel;
   private HealthServiceBlockingStub blockingStub;
   private HealthServiceStub asyncStub;
+  private HealthServiceFutureStub futureStub;
+  private ExecutorService futureExecutor;
   private boolean ready = false;
 
   private DHRateLimiter rateLimiter;
@@ -133,6 +143,8 @@ public class DHClient
     this.channel = channelBuilder.build();
     this.blockingStub = HealthServiceGrpc.newBlockingStub(channel);
     this.asyncStub = HealthServiceGrpc.newStub(channel);
+    this.futureStub = HealthServiceGrpc.newFutureStub(channel);
+    this.futureExecutor = Executors.newFixedThreadPool(2);
 
     RegisterRequest request = RegisterRequest.newBuilder().setModule(this.module).setObserver(id).build();
     RegisterReply reply;
@@ -195,6 +207,11 @@ public class DHClient
     return asyncStub;
   }
 
+  public HealthServiceFutureStub future()
+  {
+    return futureStub;
+  }
+
   public boolean observe(String subject)
   {
     if (!ready)
@@ -234,15 +251,32 @@ public class DHClient
   private static final StreamObserver<SubmitReportReply> gEmptySubmityResponseObserver = new StreamObserver<SubmitReportReply>() {
       @Override
       public void onNext(SubmitReportReply reply) {
-        logger.info("Got async submit report reply: " + reply);
+        logger.info("Got one reply for an async submission: " + reply);
       }
       @Override
       public void onError(Throwable t) {
+        logger.info("Async submit report error: " + t);
       }
       @Override
       public void onCompleted() {
+        logger.info("Async submit completed");
       }
   };
+
+  private static final FutureCallback<SubmitReportReply> gDefaultSubmitResponseCb = 
+    new FutureCallback<SubmitReportReply>() {
+      @Override
+      public void onSuccess(SubmitReportReply reply) {
+        SubmitReportReply.Status status = reply.getResult();
+        logger.info("Got async submit report reply: " + status);
+      }
+
+      @Override
+      public void onFailure(Throwable t) {
+        Status status = Status.fromThrowable(t);
+        logger.severe("Failed to async submit report: " + status.getDescription());
+      }
+    };
 
   public void selfInform(String name, Health.Status status, float score)
   {
@@ -300,7 +334,7 @@ public class DHClient
     processor.add(subject, name, status, score, resolve, false);
   }
 
-  public void informAsync(String subject, String name, Status status, float score, boolean resolve)
+  public void informAsync(String subject, String name, Health.Status status, float score, boolean resolve)
   {
     if (!ready)
       return;
@@ -332,7 +366,8 @@ public class DHClient
     return status;
   }
 
-  public void reportAsync(long time, final AsyncCallBack cb, String subject, Metric... metrics) 
+  public void reportAsync(long time, final FutureCallback<SubmitReportReply> cb, 
+      String subject, Metric... metrics) 
   {
     if (!ready)
       return;
@@ -340,31 +375,13 @@ public class DHClient
     Observation observation = DHBuilder.NewObservation(time, metrics);
     Report report = Report.newBuilder().setObserver(id).setSubject(subject).setObservation(observation).build();
     SubmitReportRequest request = SubmitReportRequest.newBuilder().setHandle(handle).setReport(report).build();
-    SubmitReportReply reply; 
 
-    StreamObserver<SubmitReportReply> responseObserver;
+    ListenableFuture<SubmitReportReply> response = futureStub.submitReport(request);
     if (cb == null) {
-      responseObserver = gEmptySubmityResponseObserver;
+      Futures.addCallback(response, gDefaultSubmitResponseCb, futureExecutor);
     } else {
-      responseObserver = new StreamObserver<SubmitReportReply>() {
-        @Override
-        public void onNext(SubmitReportReply reply) {
-          logger.info("Got async submit report reply: " + reply);
-          cb.onMessage(reply);
-        }
-        @Override
-        public void onError(Throwable t) {
-          logger.info("Async submit report error: " + t);
-          cb.onRpcError(t);
-        }
-        @Override
-        public void onCompleted() {
-          cb.onCompleted();
-        }
-      };
+      Futures.addCallback(response, cb, futureExecutor);
     }
-    asyncStub.submitReport(request, responseObserver);
-    logger.info("Submitted");
   }
 
   public Report getReport(String subject)
@@ -404,11 +421,5 @@ public class DHClient
     DateFormat formatter = new SimpleDateFormat("HH:mm:ss:SSS");
     logger.info("Got ping reply with time: " + formatter.format(date));
     return result;
-  }
-
-  public interface AsyncCallBack {
-    void onMessage(Message message);
-    void onRpcError(Throwable exception);
-    void onCompleted();
   }
 }

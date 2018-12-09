@@ -1,9 +1,13 @@
 package edu.jhu.order.deephealth;
 
 import edu.jhu.order.deephealth.Health.Report;
+import edu.jhu.order.deephealth.Service.SubmitReportReply;
 
-import com.google.protobuf.Message;
 import java.util.concurrent.CountDownLatch;
+
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.protobuf.Message;
+import io.grpc.Status;
 
 public class Bundle
 {
@@ -27,18 +31,21 @@ public class Bundle
 
       time = System.currentTimeMillis();
       final CountDownLatch finishLatch = new CountDownLatch(1);
-      client.reportAsync(time, new DHClient.AsyncCallBack() {
-        public void onMessage(Message message) {
-          System.out.println("Received reply message: " + message);
-        }
-        public void onRpcError(Throwable exception) {
-          System.err.println("Received reply error: " + exception);
+      client.reportAsync(time, new FutureCallback<SubmitReportReply>() {
+        @Override
+        public void onSuccess(SubmitReportReply reply) {
+          SubmitReportReply.Status status = reply.getResult();
+          System.out.println("Got async submit report reply: " + status);
           finishLatch.countDown();
         }
-        public void onCompleted() {
+        @Override
+        public void onFailure(Throwable t) {
+          Status status = Status.fromThrowable(t);
+          System.err.println("Failed to async submit report: " + status.getDescription());
           finishLatch.countDown();
         }
-      }, "TS_3", DHBuilder.NewMetric("cpu", Health.Status.UNHEALTHY, 40.0f), DHBuilder.NewMetric("disk", Health.Status.HEALTHY, 70.0f));
+      }, "TS_3", DHBuilder.NewMetric("cpu", Health.Status.UNHEALTHY, 40.0f), 
+        DHBuilder.NewMetric("disk", Health.Status.HEALTHY, 70.0f));
       try {
         finishLatch.await();
       } catch (InterruptedException exception) {
