@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/golang/protobuf/ptypes"
@@ -43,9 +44,14 @@ type HealthGServer struct {
 	exchange    dt.HealthExchange
 	hold_buffer *store.CacheList
 
-	handles map[uint64]*dt.ObserverModule
-	l       net.Listener
-	s       *grpc.Server
+	// registrations from prior run (e.g., instance restarted)
+	old_registrations map[uint64]*dt.Registration
+	registrations     map[uint64]*dt.Registration
+	next_handle       uint64
+	regMu             *sync.Mutex
+
+	l net.Listener
+	s *grpc.Server
 }
 
 func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
@@ -53,7 +59,9 @@ func NewHealthGServer(config *dt.HealthServerConfig) *HealthGServer {
 	gs.HealthServerConfig = *config
 	storage := store.NewRawHealthStorage(config.Subjects...)
 	gs.storage = storage
-	gs.handles = make(map[uint64]*dt.ObserverModule)
+	gs.registrations = make(map[uint64]*dt.Registration)
+	gs.regMu = &sync.Mutex{}
+	gs.next_handle = HANDLE_START
 	// hold ignored entries for 3 minutes
 	if config.BufConfig.HoldTime > 0 {
 		gs.hold_buffer = store.NewCacheList(time.Duration(config.BufConfig.HoldTime)*time.Second,
@@ -104,6 +112,8 @@ func (self *HealthGServer) Start(errch chan error) error {
 		if err == nil {
 			self.storage.SetDB(self.db)
 			self.inference.SetDB(self.db)
+			// read old registrations
+			self.old_registrations, _ = self.db.ReadRegistrations()
 		}
 	}
 	self.inference.Start()
@@ -134,28 +144,73 @@ func (self *HealthGServer) Stop(graceful bool) error {
 }
 
 func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest) (*pb.RegisterReply, error) {
-	var max_handle uint64 = HANDLE_START
-	for handle, module := range self.handles {
-		if module.Module == in.Module && module.Observer == in.Observer {
+	self.regMu.Lock()
+	defer self.regMu.Unlock()
+	var max_handle uint64 = 0
+	for handle, registration := range self.registrations {
+		if registration.Module == in.Module && registration.Observer == in.Observer {
 			return &pb.RegisterReply{Handle: handle}, nil
 		}
 		if handle > max_handle {
 			max_handle = handle
 		}
 	}
-	max_handle = max_handle + 1
+	if self.next_handle > max_handle {
+		max_handle = self.next_handle
+	} else {
+		max_handle = max_handle + 1
+	}
 	self.storage.AddSubject(in.Observer) // should include this local observer into watch list
-	self.handles[max_handle] = &dt.ObserverModule{Module: in.Module, Observer: in.Observer}
+	now := time.Now()
+	observer := dt.ObserverModule{Module: in.Module, Observer: in.Observer}
+	registration := &dt.Registration{ObserverModule: observer, Handle: max_handle, Time: now}
+	self.registrations[max_handle] = registration
 	du.LogD(stag, "received register request from (%s,%s), assigned handle %d", in.Module, in.Observer, max_handle)
+	self.db.InsertRegistration(registration)
+	self.next_handle = max_handle + 1
 	return &pb.RegisterReply{Handle: max_handle}, nil
 }
 
 func (self *HealthGServer) SubmitReport(ctx context.Context, in *pb.SubmitReportRequest) (*pb.SubmitReportReply, error) {
-	// TODO: validate submission handles here
-	_, ok := self.handles[in.Handle]
+	self.regMu.Lock()
+	_, ok := self.registrations[in.Handle]
+	var valid bool = false
 	if !ok {
-		return nil, fmt.Errorf("Invalid submission handle")
+		if self.old_registrations != nil {
+			// If we have old registrations, we might have just crashed and forgot
+			// about the handles we allocated. So we should check the old registrations
+			// if we cannot find the handle in the new registrations
+			du.LogD(stag, "Tried to check old registrations %v for handle %d", self.old_registrations, in.Handle)
+			old_reg, ok := self.old_registrations[in.Handle]
+			if ok {
+				if old_reg.Observer == in.Report.Observer {
+					// Yes, the old registrations have a record for this handle and it matches
+					// Insert it into the new registrations
+					self.registrations[in.Handle] = old_reg
+					// add this observer into watch list
+					self.storage.AddSubject(old_reg.Observer)
+					valid = true
+					du.LogI(stag, "Restored an registration from %s in the old registrations", old_reg.Observer)
+				} else {
+					du.LogI(stag, "Found handle in old registrations but observer does not match: %s vs. %s ", old_reg.Observer, in.Report.Observer)
+				}
+			} else {
+				du.LogI(stag, "Could not find old registration either for handle %d", in.Handle)
+			}
+		}
+		if !valid {
+			self.regMu.Unlock()
+			return nil, fmt.Errorf("Invalid submission handle")
+		}
+	} else {
+		// FIXIT: here we should also check if the Observer identity matches
+		// because there is a potential race condition between we restore
+		// an old registration and accept a new registration. Therefore
+		// The old observer may be using a handle allocated to a new observer.
+		// But for now, it does not really cause an issue as the Observer identity
+		// is used directly from the Report instead of the Registration table.
 	}
+	self.regMu.Unlock()
 
 	report := in.Report
 	var result pb.SubmitReportReply_Status
