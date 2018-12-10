@@ -14,6 +14,13 @@ type ObserverModule struct {
 	Observer string
 }
 
+// Represents a registration to Panorama
+type Registration struct {
+	ObserverModule
+	Handle uint64
+	Time   time.Time
+}
+
 type HealthStorage interface {
 	// Associate database with the raw storage
 	SetDB(db HealthDB)
@@ -91,6 +98,12 @@ type HealthDB interface {
 
 	// Insert an inference result into the database
 	InsertInference(inf *pb.Inference) error
+
+	// Insert a registration into the database
+	InsertRegistration(registration *Registration) error
+
+	// Read the past registrations from the database
+	ReadRegistrations() (map[uint64]*Registration, uint64)
 
 	// Close the database connection
 	Close()
