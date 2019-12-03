@@ -21,13 +21,14 @@ import (
 )
 
 const (
-	stag          = "service"
-	HANDLE_START  = 10000
-	GC_FREQUENCY  = 3 * time.Minute // frequency to invoke garbage collection
-	GC_THRESHOLD  = 5 * time.Minute // TTL threshold
-	GC_RELATIVE   = true            // garbage collect based on relative timestamp
-	HOLD_TIME     = 3 * time.Minute // time to hold ignored reports
-	HOLD_LIST_LEN = 60              // number of items to hold at most for each subject
+	stag           = "service"
+	HANDLE_START   = 10000
+	GC_FREQUENCY   = 3 * time.Minute // frequency to invoke garbage collection
+	GC_THRESHOLD   = 5 * time.Minute // TTL threshold
+	GC_RELATIVE    = true            // garbage collect based on relative timestamp
+	HOLD_TIME      = 3 * time.Minute // time to hold ignored reports
+	HOLD_LIST_LEN  = 60              // number of items to hold at most for each subject
+	DEFAULT_DBFILE = "deephealth.db" // default database file for storing local observations
 )
 
 var (
@@ -108,13 +109,15 @@ func (self *HealthGServer) Start(errch chan error) error {
 	}()
 	if len(self.DBFile) > 0 {
 		self.db = store.NewHealthDBStorage(self.DBFile)
-		_, err = self.db.Open()
-		if err == nil {
-			self.storage.SetDB(self.db)
-			self.inference.SetDB(self.db)
-			// read old registrations
-			self.old_registrations, _ = self.db.ReadRegistrations()
-		}
+	} else {
+		self.db = store.NewHealthDBStorage(DEFAULT_DBFILE)
+	}
+	_, err = self.db.Open()
+	if err == nil {
+		self.storage.SetDB(self.db)
+		self.inference.SetDB(self.db)
+		// read old registrations
+		self.old_registrations, _ = self.db.ReadRegistrations()
 	}
 	self.inference.Start()
 	self.exchange.PingAll()
@@ -166,7 +169,9 @@ func (self *HealthGServer) Register(ctx context.Context, in *pb.RegisterRequest)
 	registration := &dt.Registration{ObserverModule: observer, Handle: max_handle, Time: now}
 	self.registrations[max_handle] = registration
 	du.LogD(stag, "received register request from (%s,%s), assigned handle %d", in.Module, in.Observer, max_handle)
-	self.db.InsertRegistration(registration)
+	if self.db != nil {
+		self.db.InsertRegistration(registration)
+	}
 	self.next_handle = max_handle + 1
 	return &pb.RegisterReply{Handle: max_handle}, nil
 }

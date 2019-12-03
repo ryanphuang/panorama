@@ -21,6 +21,7 @@ import (
 var (
 	rc         = flag.String("config", "", "use config file to initialize service")
 	addr       = flag.String("addr", "localhost", "server listen address")
+	dbfile     = flag.String("dbfile", "deephealth.db", "database file of the local observations")
 	portstart  = flag.Int("port_start", 10000, "start of port range for a random port")
 	portend    = flag.Int("port_end", 30000, "end of port range for a random port")
 	cpuprofile = flag.String("cpuprofile", "", "write CPU profiling to file")
@@ -65,8 +66,9 @@ func main() {
 			os.Exit(1)
 		}
 		config = &dt.HealthServerConfig{
-			Addr: faddr,
-			Id:   args[0],
+			Addr:   faddr,
+			Id:     args[0],
+			DBFile: *dbfile,
 		}
 	}
 	if *memusage || config.DumpMemUsage {
